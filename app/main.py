@@ -52,15 +52,6 @@ class HelpScreen(ModalScreen):
     def action_dismiss(self) -> None:
         self.app.pop_screen()
 
-    def on_mount(self) -> None:
-        primary_color = self.app.pywal_colors.get("color6", "#B5EAD7")
-        self.query_one("#help_dialog").styles.border = ("solid", primary_color)
-        for header in self.query(".help_header"):
-            header.styles.color = primary_color
-
-    def action_dismiss(self) -> None:
-        self.app.pop_screen()
-
 
 class TusicApp(App):
     ENABLE_COMMAND_PALETTE = False
@@ -152,27 +143,34 @@ class TusicApp(App):
     def action_show_help(self) -> None:
         self.push_screen(HelpScreen())
 
+    @work(thread=True)
     def load_made_for_you(self) -> None:
         history = self.db.get_history()
         
         if not history:
-            query = "synthwave mix"
-            self.notify("Welcome! Fetching some starter recommendations...")
-        else:
-            artists = []
-            for song in history:
-                if song['artist'] != "Unknown":
-                    artists.extend([a.strip() for a in song['artist'].split(',') if a.strip()])
+            self.app.call_from_thread(self.notify, "Play a song first to generate a mix!", severity="warning")
+            return
             
-            if artists:
-                top_artists = [artist for artist, count in Counter(artists).most_common(3)]
-                query = f"{random.choice(top_artists)} radio"
-                self.notify("Fetching recommendations based on your taste...")
-            else:
-                query = "synthwave mix"
-                self.notify("Fetching top picks for you...")
-                
-        self.fetch_results(query)
+        seed_song = random.choice(history)
+        seed_id = seed_song["id"]
+        seed_title = seed_song["title"]
+        
+        self.app.call_from_thread(self.notify, f"Generating mix from Recents")
+        
+        results = self.api.get_radio_songs(seed_id)
+        
+        if results and "error" in results[0]:
+            self.app.call_from_thread(self.notify, f"API Error: {results[0]['error']}", severity="error")
+            return
+            
+        self.app.call_from_thread(self.update_search_table, results)
+        
+        self.app.call_from_thread(
+            setattr, 
+            self.query_one("#main_content"), 
+            "border_title", 
+            "Made For You"
+        )
 
     def action_focus_sidebar(self) -> None:
         self.query_one("#library_menu").focus()
@@ -308,8 +306,6 @@ class TusicApp(App):
         except Exception as e:
             self.notify(f"Error: {e}", severity="error")
                 
-        except Exception as e:
-            self.notify(f"Error: {e}", severity="error")
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         query = event.value

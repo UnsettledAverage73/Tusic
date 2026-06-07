@@ -8,10 +8,11 @@ class StreamResolver:
             'no_warnings': True,
             'extract_flat': False,
             'nocheckcertificate': True,
-            'ignoreerrors': False,
-            'logtostderr': False,
-            'user_agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1',
-            'referer': 'https://www.google.com/',
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['ios', 'android'],
+                }
+            }
         }
 
     def get_stream_url(self, video_id: str) -> str:

@@ -63,6 +63,14 @@ def podcasts(q: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/home")
+def home():
+    try:
+        content = tusic_api.get_home_content()
+        return content
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/radio")
 def radio(id: str):
     results = tusic_api.get_radio_songs(id)

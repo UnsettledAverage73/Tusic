@@ -35,29 +35,50 @@ class TusicAPI:
 
     def search_podcasts(self, query: str) -> list:
         try:
-            # ytmusicapi often uses filter="podcasts" or search within a specific category
-            results = self.ytmusic.search(query, filter="podcasts", limit=50)
+            results = self.ytmusic.search(query, filter="podcasts", limit=20)
             podcasts = []
             for item in results:
-                video_id = item.get('videoId')
-                # If it's a playlist or show, we handle it differently, but for simplicity let's stick to video/episodes
-                if not video_id: continue
+                browse_id = item.get('browseId')
+                if not browse_id: continue
                 
-                artists = ", ".join([a['name'] for a in item.get('artists', [])])
                 thumbnails = item.get('thumbnails', [])
                 thumbnail = thumbnails[-1]['url'] if thumbnails else None
                 
                 podcasts.append({
-                    'id': video_id,
-                    'title': item['title'],
-                    'artist': artists,
-                    'duration': item.get('duration', 'Unknown'),
+                    'id': browse_id,
+                    'title': item.get('title', 'Unknown Podcast'),
+                    'publisher': item.get('publisher', 'Unknown'),
                     'thumbnail': thumbnail,
-                    'type': 'podcast'
+                    'type': 'podcast_show'
                 })
             return podcasts
         except Exception:
             return []
+
+    def get_home_content(self) -> dict:
+        """Fetches charts and mood categories for the Discover tab."""
+        try:
+            charts = self.ytmusic.get_charts(country="US")
+            moods = self.ytmusic.get_mood_categories()
+            
+            # Simplify charts for the mobile app
+            top_songs = []
+            for track in charts.get('songs', {}).get('items', [])[:10]:
+                thumbnails = track.get('thumbnails', [])
+                top_songs.append({
+                    'id': track['videoId'],
+                    'title': track['title'],
+                    'artist': ", ".join([a['name'] for a in track.get('artists', [])]),
+                    'thumbnail': thumbnails[-1]['url'] if thumbnails else None
+                })
+
+            return {
+                "top_songs": top_songs,
+                "mood_categories": moods
+            }
+        except Exception as e:
+            print(f"Home content error: {e}")
+            return {"top_songs": [], "mood_categories": {}}
 
     def get_radio_songs(self, video_id: str) -> list:
         try:

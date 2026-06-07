@@ -36,10 +36,10 @@ class HelpScreen(ModalScreen):
             yield Label("h / l : Focus Sidebar / Songs\nH / L : View Search / View Up Next\nj / k : Move up / down", classes="help_text")
             
             yield Label(" Playback ", classes="help_header")
-            yield Label("Space : Play / Pause\nn : Next Track", classes="help_text")
+            yield Label("Space : Play / Pause\nn : Next Track\ny : Show Lyrics", classes="help_text")
             
             yield Label(" General ", classes="help_header")
-            yield Label("/ : Search\ns : Save to Playlist\nd : Delete from Playlist\nr : Refresh Recommendations", classes="help_text")
+            yield Label("/ : Search\ns : Save to Playlist\nd : Delete from Playlist\nr : Refresh Recommendations\nY : Fetch All Lyrics", classes="help_text")
             
             yield Label("Press Escape or ? to close", id="help_footer")
 
@@ -48,6 +48,80 @@ class HelpScreen(ModalScreen):
         self.query_one("#help_dialog").styles.border = ("solid", primary_color)
         for header in self.query(".help_header"):
             header.styles.color = primary_color
+
+    def action_dismiss(self) -> None:
+        self.app.pop_screen()
+
+
+class LyricsScreen(ModalScreen):
+    BINDINGS = [
+        Binding("escape", "dismiss", "Close Lyrics"),
+        Binding("q", "dismiss", "Close Lyrics"),
+        Binding("y", "dismiss", "Close Lyrics"),
+    ]
+
+    def __init__(self, title: str, artist: str, lyrics, player):
+        super().__init__()
+        self.song_title = title
+        self.song_artist = artist
+        self.player = player
+        self.lyrics_data = lyrics
+        self.lines_data = []
+        self.line_widgets = []
+        self.current_line_index = -1
+
+        if isinstance(lyrics, dict) and "lines" in lyrics:
+            self.lines_data = lyrics["lines"]
+        elif isinstance(lyrics, dict) and "lyrics" in lyrics:
+            self.plain_lyrics = lyrics["lyrics"]
+        elif isinstance(lyrics, str):
+            self.plain_lyrics = lyrics
+        else:
+            self.plain_lyrics = "No lyrics found."
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="lyrics_dialog"):
+            yield Label(f"Lyrics: {self.song_title} - {self.song_artist}", id="lyrics_title")
+            with Vertical(id="lyrics_scroll"):
+                if self.lines_data:
+                    for i, line in enumerate(self.lines_data):
+                        widget = Label(line["text"], classes="lyric_line")
+                        self.line_widgets.append(widget)
+                        yield widget
+                else:
+                    yield Label(self.plain_lyrics, id="lyrics_text")
+            yield Label("Press Escape or y to close", id="lyrics_footer")
+
+    def on_mount(self) -> None:
+        primary_color = self.app.pywal_colors.get("color6", "#B5EAD7")
+        self.query_one("#lyrics_dialog").styles.border = ("solid", primary_color)
+        self.query_one("#lyrics_title").styles.color = primary_color
+        
+        if self.lines_data:
+            self.set_interval(0.2, self.update_highlight)
+
+    def update_highlight(self) -> None:
+        current_time_ms = self.player.time_pos * 1000
+        new_line_index = -1
+        
+        for i, line in enumerate(self.lines_data):
+            if line["start_time"] <= current_time_ms:
+                new_line_index = i
+            else:
+                break
+        
+        if new_line_index != self.current_line_index:
+            # Remove old highlight
+            if self.current_line_index != -1 and self.current_line_index < len(self.line_widgets):
+                self.line_widgets[self.current_line_index].remove_class("highlighted")
+            
+            # Set new highlight
+            if new_line_index != -1 and new_line_index < len(self.line_widgets):
+                active_widget = self.line_widgets[new_line_index]
+                active_widget.add_class("highlighted")
+                active_widget.scroll_visible(animate=True)
+            
+            self.current_line_index = new_line_index
 
     def action_dismiss(self) -> None:
         self.app.pop_screen()
@@ -71,6 +145,8 @@ class TusicApp(App):
         Binding("n", "play_next", "Next Track", show=False),
         Binding("s", "save_song", "Save Song", show=False),
         Binding("d", "remove_song", "Remove Song", show=False), 
+        Binding("y", "show_lyrics", "Lyrics"),
+        Binding("Y", "fetch_all_lyrics", "Fetch All Lyrics"),
         Binding("?", "show_help", "Help", show=False),
         Binding("q", "quit", "Quit"),
     ]
@@ -85,6 +161,8 @@ class TusicApp(App):
         
         self.player = Player()
         self.player.on_track_end = self.trigger_next_song
+        self.current_video_id = None
+        self.current_lyrics = None
 
     def load_config(self) -> dict:
         config_path = Path.home() / ".config" / "tusic" / "config.json"
@@ -142,6 +220,49 @@ class TusicApp(App):
 
     def action_show_help(self) -> None:
         self.push_screen(HelpScreen())
+
+    def action_show_lyrics(self) -> None:
+        if not hasattr(self, "current_track"):
+            self.notify("No song playing.", severity="warning")
+            return
+        
+        # Parse title and artist from current_track (which is formatted as "title - artist")
+        parts = self.current_track.split(" - ", 1)
+        title = parts[0]
+        artist = parts[1] if len(parts) > 1 else "Unknown"
+        
+        self.push_screen(LyricsScreen(title, artist, self.current_lyrics, self.player))
+
+    def action_fetch_all_lyrics(self) -> None:
+        self.notify("Fetching lyrics for all songs in background...")
+        self.fetch_all_songs_lyrics()
+
+    @work(exclusive=True, thread=True)
+    def fetch_all_songs_lyrics(self) -> None:
+        all_songs = []
+        all_songs.extend(self.db.get_history())
+        all_songs.extend(self.db.get_playlist())
+        
+        unique_ids = set()
+        count = 0
+        
+        for song in all_songs:
+            video_id = song['id']
+            if video_id in unique_ids or song.get('lyrics'):
+                continue
+            
+            unique_ids.add(video_id)
+            browse_id = self.api.get_lyrics_browse_id(video_id)
+            if browse_id:
+                lyrics = self.api.get_lyrics(browse_id)
+                if lyrics:
+                    self.db.update_lyrics(video_id, lyrics)
+                    count += 1
+                    # Update current_lyrics if it matches the current song
+                    if video_id == self.current_video_id:
+                        self.current_lyrics = lyrics
+        
+        self.app.call_from_thread(self.notify, f"Finished! Fetched lyrics for {count} songs.")
 
     @work(thread=True)
     def load_made_for_you(self) -> None:
@@ -276,7 +397,11 @@ class TusicApp(App):
             row_data = table.get_row(row_key)
             video_id = row_key.value.split("||")[0]
             
-            self.db.add_to_playlist(video_id, row_data[0], row_data[1], row_data[-1])
+            lyrics = None
+            if video_id == self.current_video_id:
+                lyrics = self.current_lyrics
+            
+            self.db.add_to_playlist(video_id, row_data[0], row_data[1], row_data[-1], lyrics)
             self.notify(f"Saved: {row_data[0]}")
         except Exception:
             pass
@@ -354,6 +479,8 @@ class TusicApp(App):
     @work(exclusive=True, thread=True)
     def play_track(self, video_id: str, song_title: str, manual_interrupt: bool = True, fetch_radio: bool = False) -> None:
         self.player.auto_play_enabled = False
+        self.current_video_id = video_id
+        self.current_lyrics = None
         
         try:
             if manual_interrupt:
@@ -365,6 +492,9 @@ class TusicApp(App):
                 self.player.play(stream_url)
                 self.call_from_thread(self.set_now_playing, song_title)
                 
+                # Fetch lyrics in background
+                self.fetch_lyrics(video_id)
+                
                 if fetch_radio:
                     self.call_from_thread(self.fetch_radio, video_id)
             else:
@@ -372,6 +502,29 @@ class TusicApp(App):
         finally:
             time.sleep(1.0)
             self.player.auto_play_enabled = True
+
+    @work(thread=True)
+    def fetch_lyrics(self, video_id: str) -> None:
+        # First check DB
+        history = self.db.get_history()
+        for song in history:
+            if song['id'] == video_id and song.get('lyrics'):
+                self.current_lyrics = song['lyrics']
+                return
+
+        playlist = self.db.get_playlist()
+        for song in playlist:
+            if song['id'] == video_id and song.get('lyrics'):
+                self.current_lyrics = song['lyrics']
+                return
+
+        # Fetch from API
+        browse_id = self.api.get_lyrics_browse_id(video_id)
+        if browse_id:
+            lyrics = self.api.get_lyrics(browse_id)
+            if lyrics:
+                self.current_lyrics = lyrics
+                self.db.update_lyrics(video_id, lyrics)
 
     @work(exclusive=True, thread=True)
     def fetch_radio(self, video_id: str) -> None:

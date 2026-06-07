@@ -8,10 +8,16 @@ class TusicAPI:
         try:
             results = self.ytmusic.search(query, filter="songs", limit=50)
             tracks = []
+            seen_ids = set()
             for item in results:
+                video_id = item.get('videoId')
+                if not video_id or video_id in seen_ids:
+                    continue
+                seen_ids.add(video_id)
+                
                 artists = ", ".join([a['name'] for a in item.get('artists', [])])
                 tracks.append({
-                    'id': item['videoId'],
+                    'id': video_id,
                     'title': item['title'],
                     'artist': artists,
                     'duration': item.get('duration', 'Unknown')
@@ -25,13 +31,15 @@ class TusicAPI:
             # The RDAMVM prefix forces YouTube to generate an endless algorithmic radio mix
             playlist = self.ytmusic.get_watch_playlist(videoId=video_id, playlistId=f"RDAMVM{video_id}")
             tracks = []
+            seen_ids = set()
             
             for item in playlist.get('tracks', []):
                 current_id = item.get('videoId')
                 
-                if not current_id or current_id == video_id:
+                if not current_id or current_id == video_id or current_id in seen_ids:
                     continue 
                 
+                seen_ids.add(current_id)
                 artists_list = item.get('artists', [])
                 artists = ", ".join([a['name'] for a in artists_list if 'name' in a]) if artists_list else "Unknown Artist"
                 

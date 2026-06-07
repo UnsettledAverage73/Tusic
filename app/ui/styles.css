@@ -130,3 +130,57 @@ HelpScreen {
     margin-top: 1;
     text-style: italic;
 }
+
+/* --- Lyrics Modal Styling --- */
+LyricsScreen {
+    align: center middle;
+    background: #000000 80%;
+}
+
+#lyrics_dialog {
+    width: 80%;
+    height: 80%;
+    background: #000000;
+    padding: 1 2;
+    border: double #B5EAD7;
+}
+
+#lyrics_title {
+    content-align: center middle;
+    text-style: bold underline;
+    width: 100%;
+    margin-bottom: 1;
+}
+
+#lyrics_scroll {
+    height: 1fr;
+    overflow-y: scroll;
+    padding: 1;
+}
+
+#lyrics_text {
+    width: 100%;
+    height: auto;
+    color: #EEEEEE;
+}
+
+.lyric_line {
+    width: 100%;
+    height: auto;
+    color: #888888;
+    content-align: center middle;
+    margin-bottom: 1;
+}
+
+.lyric_line.highlighted {
+    color: #FFFFFF;
+    text-style: bold;
+    background: #222222;
+}
+
+#lyrics_footer {
+    content-align: center middle;
+    width: 100%;
+    margin-top: 1;
+    text-style: italic;
+}

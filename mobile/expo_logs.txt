@@ -1,0 +1,137 @@
+Starting project at /home/unsettledaverage73/tusic/mobile
+Starting Metro Bundler
+The following packages should be updated for best compatibility with the installed expo version:
+  @react-native-async-storage/async-storage@2.1.2 - expected version: 2.2.0
+  @react-native-community/slider@4.5.7 - expected version: 5.0.1
+  react-native-safe-area-context@5.2.0 - expected version: ~5.6.0
+  react-native-screens@4.6.0 - expected version: ~4.16.0
+Your project may not work correctly until you install the expected versions of the packages.
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web ./index.js ▓▓▓▓▓▓▓▓░░░░░░░░ 50.2% (114/215)
+Web ./index.js ▓▓▓▓▓▓▓▓░░░░░░░░ 50.2% ( 260/1919)
+Web ./index.js ▓▓▓▓▓▓▓▓░░░░░░░░ 50.2% ( 552/1987)
+Web ./index.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 66.3% (1618/1987)
+Web ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.3% (2204/2212)
+Web Bundling failed 17600ms index.js (2212 modules)
+Unable to resolve "react-native-svg" from "node_modules/lucide-react-native/dist/esm/Icon.js"
+[0m [90m  7 |[39m
+ [90m  8 |[39m [36mimport[39m { forwardRef[33m,[39m createElement } [36mfrom[39m [32m'react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNativeSvg[39m [36mfrom[39m [32m'react-native-svg'[39m[33m;[39m
+ [90m    |[39m                             [31m[1m^[22m[39m
+ [90m 10 |[39m [36mimport[39m defaultAttributes[33m,[39m { childDefaultAttributes } [36mfrom[39m [32m'./defaultAttributes.js'[39m[33m;[39m
+ [90m 11 |[39m
+ [90m 12 |[39m [36mconst[39m [33mIcon[39m [33m=[39m forwardRef([0m
+
+Import stack:
+
+ node_modules/lucide-react-native/dist/esm/Icon.js
+ | import "react-native-svg"
+
+ node_modules/lucide-react-native/dist/esm/lucide-react-native.js
+ | import "./Icon.js"
+
+ src/components/MainLayout.js
+ | import "lucide-react-native"
+
+ App.js
+ | import "./src/components/MainLayout"
+
+ index.js
+ | import "./App"
+
+ 
+ | import "./index"
+
+Web Bundling failed 1582ms index.js (2211 modules)
+Unable to resolve "react-native-svg" from "node_modules/lucide-react-native/dist/esm/createLucideIcon.js"
+[0m [90m  7 |[39m
+ [90m  8 |[39m [36mimport[39m { forwardRef[33m,[39m createElement } [36mfrom[39m [32m'react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNativeSvg[39m [36mfrom[39m [32m'react-native-svg'[39m[33m;[39m
+ [90m    |[39m                             [31m[1m^[22m[39m
+ [90m 10 |[39m [36mimport[39m defaultAttributes[33m,[39m { childDefaultAttributes } [36mfrom[39m [32m'./defaultAttributes.js'[39m[33m;[39m
+ [90m 11 |[39m
+ [90m 12 |[39m [36mconst[39m createLucideIcon [33m=[39m (iconName[33m,[39m iconNode) [33m=>[39m {[0m
+
+Import stack:
+
+ node_modules/lucide-react-native/dist/esm/createLucideIcon.js
+ | import "react-native-svg"
+
+ node_modules/lucide-react-native/dist/esm/lucide-react-native.js
+ | import "./createLucideIcon.js"
+
+ src/components/MainLayout.js
+ | import "lucide-react-native"
+
+ App.js
+ | import "./src/components/MainLayout"
+
+ index.js
+ | import "./App"
+
+ 
+ | import "./index"
+
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundling failed 967ms index.js (2189 modules)
+Unable to resolve "react-native-svg" from "node_modules/lucide-react-native/dist/esm/createLucideIcon.js"
+[0m [90m  7 |[39m
+ [90m  8 |[39m [36mimport[39m { forwardRef[33m,[39m createElement } [36mfrom[39m [32m'react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNativeSvg[39m [36mfrom[39m [32m'react-native-svg'[39m[33m;[39m
+ [90m    |[39m                             [31m[1m^[22m[39m
+ [90m 10 |[39m [36mimport[39m defaultAttributes[33m,[39m { childDefaultAttributes } [36mfrom[39m [32m'./defaultAttributes.js'[39m[33m;[39m
+ [90m 11 |[39m
+ [90m 12 |[39m [36mconst[39m createLucideIcon [33m=[39m (iconName[33m,[39m iconNode) [33m=>[39m {[0m
+
+Import stack:
+
+ node_modules/lucide-react-native/dist/esm/createLucideIcon.js
+ | import "react-native-svg"
+
+ node_modules/lucide-react-native/dist/esm/lucide-react-native.js
+ | import "./createLucideIcon.js"
+
+ src/components/MainLayout.js
+ | import "lucide-react-native"
+
+ App.js
+ | import "./src/components/MainLayout"
+
+ index.js
+ | import "./App"
+
+ 
+ | import "./index"
+
+Web Bundling failed 550ms index.js (2208 modules)
+Unable to resolve "react-native-svg" from "node_modules/lucide-react-native/dist/esm/createLucideIcon.js"
+[0m [90m  7 |[39m
+ [90m  8 |[39m [36mimport[39m { forwardRef[33m,[39m createElement } [36mfrom[39m [32m'react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNativeSvg[39m [36mfrom[39m [32m'react-native-svg'[39m[33m;[39m
+ [90m    |[39m                             [31m[1m^[22m[39m
+ [90m 10 |[39m [36mimport[39m defaultAttributes[33m,[39m { childDefaultAttributes } [36mfrom[39m [32m'./defaultAttributes.js'[39m[33m;[39m
+ [90m 11 |[39m
+ [90m 12 |[39m [36mconst[39m createLucideIcon [33m=[39m (iconName[33m,[39m iconNode) [33m=>[39m {[0m
+
+Import stack:
+
+ node_modules/lucide-react-native/dist/esm/createLucideIcon.js
+ | import "react-native-svg"
+
+ node_modules/lucide-react-native/dist/esm/lucide-react-native.js
+ | import "./createLucideIcon.js"
+
+ src/components/MainLayout.js
+ | import "lucide-react-native"
+
+ App.js
+ | import "./src/components/MainLayout"
+
+ index.js
+ | import "./App"
+
+ 
+ | import "./index"
+

@@ -5,7 +5,7 @@ import { usePlayer } from '../context/PlayerContext';
 import { THEME } from '../styles/theme';
 
 const LibraryScreen = () => {
-  const { history, playlist, playTrack } = usePlayer();
+  const { history, playlist, playTrack, clearHistory } = usePlayer();
   const [tab, setTab] = useState('Playlist');
 
   const renderItem = ({ item }) => (
@@ -46,6 +46,12 @@ const LibraryScreen = () => {
         </TouchableOpacity>
       </View>
 
+      {tab === 'History' && history.length > 0 && (
+        <TouchableOpacity style={styles.clearButton} onPress={clearHistory}>
+          <Text style={styles.clearButtonText}>[ PURGE_HISTORY_LOG ]</Text>
+        </TouchableOpacity>
+      )}
+
       <FlatList
         data={tab === 'Playlist' ? playlist : history}
         renderItem={renderItem}
@@ -57,7 +63,7 @@ const LibraryScreen = () => {
               {tab === 'Playlist' ? "_ NO_SAVED_TRACKS" : "_ NO_HISTORY_LOGGED"}
             </Text>
             <Text style={styles.subEmptyText}>
-              Search and play music to populate this list.
+              Search for tracks and play them to populate your localized database.
             </Text>
           </View>
         }
@@ -97,6 +103,15 @@ const styles = StyleSheet.create({
   },
   activeTabText: {
     color: THEME.colors.text.accent,
+  },
+  clearButton: {
+    padding: 12,
+    alignItems: 'flex-end',
+  },
+  clearButtonText: {
+    color: THEME.colors.error,
+    fontFamily: THEME.typography.mono,
+    fontSize: 10,
   },
   list: {
     paddingHorizontal: 12,

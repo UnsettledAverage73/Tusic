@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { Audio } from 'expo-av';
 import { TusicAPI } from '../api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ytdl from 'react-native-ytdl';
 
 const PlayerContext = createContext();
 
@@ -17,6 +16,7 @@ export const PlayerProvider = ({ children }) => {
   const [history, setHistory] = useState([]);
   const [playlist, setPlaylist] = useState([]);
   const [moodSeeds, setMoodSeeds] = useState([]);
+  const [playbackError, setPlaybackError] = useState(null);
   
   // Collaborative Room State
   const [roomId, setRoomId] = useState(null);
@@ -160,7 +160,10 @@ export const PlayerProvider = ({ children }) => {
     await AsyncStorage.setItem('playlist', JSON.stringify(updatedPlaylist));
   };
 
-  const [playbackError, setPlaybackError] = useState(null);
+  const clearHistory = async () => {
+    setHistory([]);
+    await AsyncStorage.removeItem('history');
+  };
 
   const playTrack = async (track, newQueue = [], isRemote = false) => {
     try {
@@ -174,51 +177,33 @@ export const PlayerProvider = ({ children }) => {
         setSound(null);
       }
 
-      console.log(`[Player] Resolving stream locally for: ${track.id}`);
-      let streamUrl = null;
-      
-      try {
-        // Try local resolution
-        const urls = await ytdl(track.id, { quality: 'highestaudio' });
-        if (urls && urls[0] && urls[0].url) {
-          streamUrl = urls[0].url;
-          console.log("[Player] Local resolution success");
-        }
-      } catch (ytdlError) {
-        console.warn("[Player] Local resolution failed:", ytdlError.message);
-      }
-
-      // Fallback to backend if local failed or returned nothing
-      if (!streamUrl) {
-        console.log("[Player] Falling back to backend resolver...");
-        streamUrl = await TusicAPI.resolve(track.id);
-      }
+      console.log(`[Player] Resolving stream via backend proxy for: ${track.id}`);
+      const streamUrl = await TusicAPI.resolve(track.id);
 
       if (!streamUrl) {
-        throw new Error("Could not obtain a valid stream URL from any source.");
+        throw new Error("The server was unable to resolve a streamable URL for this track.");
       }
 
-      console.log("[Player] Creating sound with URL:", streamUrl.substring(0, 50) + "...");
+      console.log("[Player] Creating sound instance");
       
       const { sound: newSound, status } = await Audio.Sound.createAsync(
         { uri: streamUrl },
         { 
           shouldPlay: true,
           progressUpdateIntervalMillis: 500,
-          positionMillis: 0
         },
         onPlaybackStatusUpdate
       );
 
       if (status.error) {
-        throw new Error(`Expo AV status error: ${status.error}`);
+        throw new Error(`Media engine error: ${status.error}`);
       }
 
       setSound(newSound);
       setCurrentTrack(track);
       setIsPlaying(true);
       setIsLoading(false);
-      console.log("[Player] Playback instance created and playing");
+      console.log("[Player] Success");
       
       saveToHistory(track);
       AsyncStorage.setItem('last_track', JSON.stringify(track));
@@ -234,7 +219,7 @@ export const PlayerProvider = ({ children }) => {
         setQueue(radioTracks);
       }
     } catch (e) {
-      console.error("[Player] CRITICAL Playback error:", e);
+      console.error("[Player] Playback error:", e);
       setPlaybackError(e.message);
       setIsLoading(false);
     }
@@ -298,6 +283,7 @@ export const PlayerProvider = ({ children }) => {
       playNext,
       seek,
       togglePlaylist,
+      clearHistory,
       joinRoom,
       leaveRoom,
       playbackError

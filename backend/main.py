@@ -1,8 +1,22 @@
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict
+from core.api import TusicAPI
+from core.resolver import StreamResolver
 
-# ... (rest of imports)
+app = FastAPI(title="Tusic API")
+
+# Allow mobile app to connect
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+tusic_api = TusicAPI()
+resolver = StreamResolver()
 
 # Active connections storage: {room_id: [websocket1, websocket2]}
 rooms: Dict[str, List[WebSocket]] = {}
@@ -27,22 +41,6 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
         rooms[room_id].remove(websocket)
         if not rooms[room_id]:
             del rooms[room_id]
-from core.api import TusicAPI
-from core.resolver import StreamResolver
-
-app = FastAPI(title="Tusic API")
-
-# Allow mobile app to connect
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-tusic_api = TusicAPI()
-resolver = StreamResolver()
 
 @app.get("/")
 def health_check():
@@ -77,3 +75,9 @@ def lyrics(id: str):
         lyrics_data = tusic_api.get_lyrics(browse_id)
         return {"lyrics": lyrics_data}
     return {"lyrics": None}
+
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

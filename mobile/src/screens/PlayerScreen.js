@@ -33,22 +33,6 @@ const PlayerScreen = () => {
     }
   };
 
-  if (!currentTrack) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.asciiArt}>{`
-  _______ _    _  _____ _____ _____ 
- |__   __| |  | |/ ____|_   _/ ____|
-    | |  | |  | | (___   | || |     
-    | |  | |  | |\___ \  | || |     
-    | |  | |__| |____) |_| || |____ 
-    |_|   \____/|_____/|_____\_____|
-        `}</Text>
-        <Text style={styles.emptyText}>_ NO_MEDIA_DETECTED</Text>
-      </View>
-    );
-  }
-
   const formatTime = (millis) => {
     const totalSeconds = millis / 1000;
     const minutes = Math.floor(totalSeconds / 60);
@@ -71,6 +55,29 @@ const PlayerScreen = () => {
       </Text>
     );
   };
+
+  if (!currentTrack) {
+    return (
+      <View style={styles.emptyContainer}>
+        {playbackError && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorHeader}>!! PLAYBACK_FAILURE !!</Text>
+            <Text style={styles.errorText}>{playbackError}</Text>
+            <Text style={styles.errorSubText}>The server was unable to resolve this stream. This is likely due to YouTube's bot protection.</Text>
+          </View>
+        )}
+        <Text style={styles.asciiArt}>{`
+  _______ _    _  _____ _____ _____ 
+ |__   __| |  | |/ ____|_   _/ ____|
+    | |  | |  | | (___   | || |     
+    | |  | |  | |\___ \  | || |     
+    | |  | |__| |____) |_| || |____ 
+    |_|   \____/|_____/|_____\_____|
+        `}</Text>
+        <Text style={styles.emptyText}>_ NO_MEDIA_DETECTED</Text>
+      </View>
+    );
+  }
 
   const isSaved = playlist.some(t => t.id === currentTrack.id);
 

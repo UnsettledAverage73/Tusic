@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: tusic-backend
+    env: docker
+    rootDir: backend
+    plan: free
+    region: ohio
+    healthCheckPath: /

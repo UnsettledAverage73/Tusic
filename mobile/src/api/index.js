@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Replace with your Render URL or local IP for testing
-const API_BASE_URL = 'https://tusic-backend.onrender.com'; 
+const API_BASE_URL = 'http://172.20.10.6:8000'; 
 
 const api = axios.create({
   baseURL: API_BASE_URL,

@@ -259,15 +259,20 @@ const styles = StyleSheet.create({
   },
   artworkContainer: {
     alignItems: 'center',
-    marginVertical: 20,
+    justifyContent: 'center',
+    marginVertical: 10,
     backgroundColor: THEME.colors.surface,
     padding: 10,
     borderWidth: 1,
     borderColor: THEME.colors.border,
+    maxHeight: 300,
+    overflow: 'hidden',
   },
   albumArt: {
-    width: width - 80,
-    height: width - 80,
+    width: '100%',
+    height: undefined,
+    aspectRatio: 1,
+    maxWidth: 280,
     backgroundColor: '#111',
   },
   trackInfo: {

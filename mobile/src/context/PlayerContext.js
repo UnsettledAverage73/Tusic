@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { Audio } from 'expo-av';
 import { TusicAPI } from '../api';
 import { DownloadManager } from '../api/download';
+import { YouTubeResolver } from '../api/resolver';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PlayerContext = createContext();
@@ -210,15 +211,20 @@ export const PlayerProvider = ({ children }) => {
       console.log(`[Player] Checking local storage for: ${track.id}`);
       let streamUrl = await DownloadManager.getDownloadedUri(track.id);
       
-      if (streamUrl) {
-        console.log("[Player] Local file found, playing offline.");
-      } else {
-        console.log(`[Player] Resolving stream via backend proxy for: ${track.id}`);
+      if (!streamUrl) {
+        // Try Client-Side Resolution (Bypasses Data Center Blocks)
+        console.log(`[Player] Resolving stream locally via InnerTube client for: ${track.id}`);
+        streamUrl = await YouTubeResolver.resolve(track.id);
+      }
+
+      if (!streamUrl) {
+        // Last Resort Fallback to Backend Proxy
+        console.log(`[Player] Falling back to backend proxy for: ${track.id}`);
         streamUrl = await TusicAPI.resolve(track.id);
       }
 
       if (!streamUrl) {
-        throw new Error("The server was unable to resolve a streamable URL for this track.");
+        throw new Error("MEDIA_RESOLUTION_FAILED: All global resolution nodes (Local, Proxy, Backend) are currently blocked or offline.");
       }
 
       console.log("[Player] Creating sound instance");
@@ -256,9 +262,18 @@ export const PlayerProvider = ({ children }) => {
         setQueue(radioTracks);
       }
     } catch (e) {
-      console.error("[Player] Playback error:", e);
-      setPlaybackError(e.message);
+      console.error("[Player] CRITICAL Playback Failure:", e.message);
+      
+      // CRITICAL: Clean up state to break the infinite loading loop
       setIsLoading(false);
+      setIsPlaying(false);
+      
+      if (sound) {
+        try { await sound.unloadAsync(); } catch (err) {}
+        setSound(null);
+      }
+
+      setPlaybackError(`SYSTEM_BLOCK: ${e.message}. All available resolution nodes are currently blocked or offline.`);
     }
   };
 
@@ -274,16 +289,32 @@ export const PlayerProvider = ({ children }) => {
   };
 
   const togglePlayPause = async () => {
-    if (!sound) {
-      if (currentTrack) playTrack(currentTrack);
-      return;
-    }
-    if (isPlaying) {
-      await sound.pauseAsync();
-      emitPlaybackEvent('PAUSE', { position });
-    } else {
-      await sound.playAsync();
-      emitPlaybackEvent('PLAY', { position });
+    try {
+      if (!sound) {
+        console.log("[Player] Toggle: No sound object, attempting to play currentTrack");
+        if (currentTrack) playTrack(currentTrack);
+        return;
+      }
+
+      const status = await sound.getStatusAsync();
+      if (!status.isLoaded) {
+        console.warn("[Player] Toggle: Sound not loaded");
+        return;
+      }
+
+      if (isPlaying) {
+        console.log("[Player] Toggle: Pausing...");
+        await sound.pauseAsync();
+        setIsPlaying(false); // Immediate UI update
+        emitPlaybackEvent('PAUSE', { position });
+      } else {
+        console.log("[Player] Toggle: Playing...");
+        await sound.playAsync();
+        setIsPlaying(true); // Immediate UI update
+        emitPlaybackEvent('PLAY', { position });
+      }
+    } catch (e) {
+      console.error("[Player] Toggle Error:", e);
     }
   };
 

@@ -80,9 +80,12 @@ def radio(id: str):
 def resolve(id: str):
     try:
         url = resolver.get_stream_url(id)
+        if not url:
+            raise HTTPException(status_code=404, detail="Stream URL not found")
         return {"url": url}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Resolve failed for {id}: {e}")
+        raise HTTPException(status_code=404, detail=str(e))
 
 @app.get("/lyrics")
 def lyrics(id: str):

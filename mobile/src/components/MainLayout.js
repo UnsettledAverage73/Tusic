@@ -65,8 +65,8 @@ const MainLayout = () => {
         )}
       </View>
 
-      {/* MiniPlayer integration */}
-      {currentTrack && activePane !== 'Player' && activePane !== 'Zen' && <MiniPlayer />}
+      {/* MiniPlayer integration - only for mobile and when not on Player/Zen screens */}
+      {currentTrack && !isTablet && activePane !== 'Player' && activePane !== 'Zen' && <MiniPlayer />}
 
       {/* TUI Navigation Footer (Status Line) */}
       {!isTablet && (

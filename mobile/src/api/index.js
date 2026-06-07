@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Replace with your Render URL or local IP for testing
-const API_BASE_URL = 'https://cool-carrots-own.loca.lt'; 
+const API_BASE_URL = 'https://tusic-backend.onrender.com'; 
 
 const api = axios.create({
   baseURL: API_BASE_URL,

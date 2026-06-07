@@ -1,11 +1,6 @@
 {
   "cli": {
-    "version": ">= 14.3.1",
-    "appExtensions": {
-      "expo-notifications": {
-        "copyToDist": true
-      }
-    }
+    "version": ">= 14.3.1"
   },
   "build": {
     "development": {

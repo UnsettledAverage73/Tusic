@@ -1,5 +1,32 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from typing import List, Dict
+
+# ... (rest of imports)
+
+# Active connections storage: {room_id: [websocket1, websocket2]}
+rooms: Dict[str, List[WebSocket]] = {}
+
+@app.websocket("/ws/room/{room_id}")
+async def websocket_endpoint(websocket: WebSocket, room_id: str):
+    await websocket.accept()
+    if room_id not in rooms:
+        rooms[room_id] = []
+    rooms[room_id].append(websocket)
+    
+    try:
+        while True:
+            # Wait for any message from a client in the room
+            data = await websocket.receive_json()
+            
+            # Broadcast the message to everyone else in the same room
+            for connection in rooms[room_id]:
+                if connection != websocket:
+                    await connection.send_json(data)
+    except WebSocketDisconnect:
+        rooms[room_id].remove(websocket)
+        if not rooms[room_id]:
+            del rooms[room_id]
 from core.api import TusicAPI
 from core.resolver import StreamResolver
 

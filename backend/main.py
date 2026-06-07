@@ -14,6 +14,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+tusic_api = TusicAPI()
+resolver = StreamResolver()
+
 @app.get("/")
 def health_check():
     return {"status": "alive", "service": "Tusic API"}

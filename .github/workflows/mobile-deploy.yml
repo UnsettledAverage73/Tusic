@@ -1,0 +1,49 @@
+name: Mobile Update & APK Build
+
+on:
+  workflow_dispatch: # Allows one-click trigger from GitHub Actions tab
+  push:
+    branches:
+      - main
+    paths:
+      - 'mobile/**' # Only run when mobile code changes
+
+jobs:
+  update-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: 🏗 Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📦 Install dependencies
+        working-directory: mobile
+        run: npm install --legacy-peer-deps
+
+      - name: 🚀 Push OTA Update (Instant Update for users)
+        working-directory: mobile
+        run: eas update --auto --non-interactive
+
+      - name: 🏗 Build Android APK
+        working-directory: mobile
+        run: eas build --platform android --profile preview --non-interactive --local --output=./tusic-latest.apk
+
+      - name: 📤 Upload APK to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v2.0.0-mobile-preview
+          files: mobile/tusic-latest.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

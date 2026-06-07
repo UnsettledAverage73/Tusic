@@ -33,28 +33,45 @@ export const PlayerProvider = ({ children }) => {
     };
   }, []);
 
-  // Web Socket Sync Logic
+  // Real Web Socket Sync Logic
   const joinRoom = (id) => {
     if (ws.current) ws.current.close();
     
-    // In a real app, this would be a real WebSocket URL from the backend
-    // ws.current = new WebSocket(`ws://your-api.com/ws/room/${id}`);
+    const wsUrl = `wss://tusic-backend.onrender.com/ws/room/${id}`;
+    console.log(`[Socket] Connecting to Room: ${id} at ${wsUrl}`);
     
-    // Mock WebSocket for demonstration of the flow
-    console.log(`Connecting to Room: ${id}`);
+    ws.current = new WebSocket(wsUrl);
     setRoomId(id);
     
-    // Simulate receiving a sync event
-    /*
+    ws.current.onopen = () => {
+      console.log("[Socket] Connected to room server");
+    };
+
     ws.current.onmessage = (e) => {
       const data = JSON.parse(e.data);
-      if (data.type === 'SYNC_PLAYBACK') {
+      console.log("[Socket] Received event:", data.type);
+      
+      if (data.type === 'TRACK_CHANGE') {
         if (data.track.id !== currentTrack?.id) {
            playTrack(data.track, [], true); // true to skip emitting back
         }
+      } else if (data.type === 'PLAY') {
+        if (sound && !isPlaying) sound.playAsync();
+      } else if (data.type === 'PAUSE') {
+        if (sound && isPlaying) sound.pauseAsync();
+      } else if (data.type === 'SEEK') {
+        if (sound) sound.setPositionAsync(data.position);
       }
     };
-    */
+
+    ws.current.onerror = (err) => {
+      console.error("[Socket] Error:", err.message);
+    };
+
+    ws.current.onclose = () => {
+      console.log("[Socket] Connection closed");
+      setRoomId(null);
+    };
   };
 
   const leaveRoom = () => {
@@ -144,12 +161,22 @@ export const PlayerProvider = ({ children }) => {
 
   const playTrack = async (track, newQueue = [], isRemote = false) => {
     try {
+      console.log(`[Player] Attempting to play track: ${track.title} (${track.id})`);
       setIsLoading(true);
       if (sound) {
+        console.log("[Player] Unloading previous sound");
         await sound.unloadAsync();
       }
 
+      console.log(`[Player] Resolving stream for: ${track.id}`);
       const streamUrl = await TusicAPI.resolve(track.id);
+      console.log(`[Player] Stream URL resolved: ${streamUrl ? 'SUCCESS' : 'FAILED'}`);
+      
+      if (!streamUrl) {
+        throw new Error("Could not resolve stream URL");
+      }
+
+      console.log("[Player] Creating new sound instance");
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: streamUrl },
         { shouldPlay: true },
@@ -160,6 +187,7 @@ export const PlayerProvider = ({ children }) => {
       setCurrentTrack(track);
       setIsPlaying(true);
       setIsLoading(false);
+      console.log("[Player] Playback started successfully");
       
       saveToHistory(track);
       AsyncStorage.setItem('last_track', JSON.stringify(track));
@@ -171,11 +199,12 @@ export const PlayerProvider = ({ children }) => {
       if (newQueue.length > 0) {
         setQueue(newQueue);
       } else {
+        console.log("[Player] Fetching radio for queue");
         const radioTracks = await TusicAPI.getRadio(track.id);
         setQueue(radioTracks);
       }
     } catch (e) {
-      console.error("Playback error", e);
+      console.error("[Player] Playback error:", e);
       setIsLoading(false);
     }
   };

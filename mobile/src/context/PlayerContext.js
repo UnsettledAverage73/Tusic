@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { Audio } from 'expo-av';
 import { TusicAPI } from '../api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ytdl from 'react-native-ytdl';
 
 const PlayerContext = createContext();
 
@@ -168,8 +169,16 @@ export const PlayerProvider = ({ children }) => {
         await sound.unloadAsync();
       }
 
-      console.log(`[Player] Resolving stream for: ${track.id}`);
-      const streamUrl = await TusicAPI.resolve(track.id);
+      console.log(`[Player] Resolving stream locally for: ${track.id}`);
+      let streamUrl;
+      try {
+        const urls = await ytdl(track.id, { quality: 'highestaudio' });
+        streamUrl = urls[0]?.url;
+      } catch (ytdlError) {
+        console.warn("[Player] Local resolution failed, falling back to backend:", ytdlError.message);
+        streamUrl = await TusicAPI.resolve(track.id);
+      }
+
       console.log(`[Player] Stream URL resolved: ${streamUrl ? 'SUCCESS' : 'FAILED'}`);
       
       if (!streamUrl) {

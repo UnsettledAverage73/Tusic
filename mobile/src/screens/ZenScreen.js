@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, TextInput, ActivityIndicator, Vibration } from 'react-native';
 import { usePlayer } from '../context/PlayerContext';
 import { THEME } from '../styles/theme';
-import { Moon, Sun, Coffee, Brain, Users, XCircle, ChevronRight } from 'lucide-react-native';
+import { Moon, Sun, Coffee, Brain, Users, XCircle, ChevronRight, Zap } from 'lucide-react-native';
+import { Accelerometer } from 'expo-sensors';
 
 const ZenScreen = () => {
   const { moodSeeds, playTrack, currentTrack, isPlaying, roomId, joinRoom, leaveRoom } = usePlayer();
@@ -10,9 +11,85 @@ const ZenScreen = () => {
   const [isActive, setIsActive] = useState(false);
   const [mode, setMode] = useState('WORK'); // WORK or BREAK
   const [inputRoomId, setInputRoomId] = useState('');
+  const [isShaking, setIsShaking] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const shakeAnim = useRef(new Animated.Value(0)).current;
 
-  // ... (timer logic remains unchanged)
+  useEffect(() => {
+    let subscription;
+    Accelerometer.setUpdateInterval(100);
+    subscription = Accelerometer.addListener(data => {
+      const { x, y, z } = data;
+      const totalForce = Math.sqrt(x*x + y*y + z*z);
+      if (totalForce > 2.5) { // Shake threshold
+        handleShake();
+      }
+    });
+    return () => subscription && subscription.remove();
+  }, []);
+
+  const handleShake = () => {
+    if (isShaking) return;
+    setIsShaking(true);
+    Vibration.vibrate(100);
+    
+    // Animate
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]).start();
+
+    // Generate random room ID if not in one
+    if (!roomId) {
+      const newId = Math.random().toString(36).substring(7).toUpperCase();
+      console.log("[Zen] Shake detected! Creating room:", newId);
+      joinRoom(newId);
+    }
+
+    setTimeout(() => setIsShaking(false), 1000);
+  };
+
+  useEffect(() => {
+    let interval = null;
+    if (isActive && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((time) => time - 1);
+      }, 1000);
+    } else if (timeLeft === 0) {
+      handleTimerComplete();
+    }
+    return () => clearInterval(interval);
+  }, [isActive, timeLeft]);
+
+  const handleTimerComplete = () => {
+    setIsActive(false);
+    if (mode === 'WORK') {
+      setMode('BREAK');
+      setTimeLeft(5 * 60);
+    } else {
+      setMode('WORK');
+      setTimeLeft(25 * 60);
+    }
+    // Pulse animation on complete
+    Animated.sequence([
+      Animated.timing(fadeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 50, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const toggleTimer = () => setIsActive(!isActive);
+  
+  const resetTimer = () => {
+    setIsActive(false);
+    setTimeLeft(mode === 'WORK' ? 25 * 60 : 5 * 60);
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const handleJoin = () => {
     if (inputRoomId.trim()) {
@@ -21,10 +98,14 @@ const ZenScreen = () => {
   };
 
   return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+    <Animated.View style={[
+      styles.container, 
+      { opacity: fadeAnim, transform: [{ translateX: shakeAnim }] }
+    ]}>
       <View style={styles.header}>
         <Brain size={20} color={THEME.colors.text.accent} />
         <Text style={styles.headerText}> SESSION_TYPE: {mode}</Text>
+        {isShaking && <Zap size={14} color={THEME.colors.warning} style={{marginLeft: 10}} />}
       </View>
 
       <View style={styles.timerContainer}>
@@ -59,7 +140,7 @@ const ZenScreen = () => {
         
         {roomId ? (
           <View style={styles.activeRoom}>
-            <Text style={styles.roomDesc}>Real-time synchronization enabled. Every action you take is broadcasted to the session.</Text>
+            <Text style={styles.roomDesc}>Real-time synchronization enabled. Shake device to invite nearby nodes.</Text>
             <TouchableOpacity onPress={leaveRoom} style={styles.leaveButton}>
               <XCircle size={14} color="#f44" />
               <Text style={styles.leaveButtonText}> TERMINATE_SESSION</Text>

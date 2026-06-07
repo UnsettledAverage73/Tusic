@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Audio } from 'expo-av';
 import { TusicAPI } from '../api';
+import { DownloadManager } from '../api/download';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PlayerContext = createContext();
@@ -15,6 +16,7 @@ export const PlayerProvider = ({ children }) => {
   const [queue, setQueue] = useState([]);
   const [history, setHistory] = useState([]);
   const [playlist, setPlaylist] = useState([]);
+  const [downloads, setDownloads] = useState([]);
   const [moodSeeds, setMoodSeeds] = useState([]);
   const [playbackError, setPlaybackError] = useState(null);
   
@@ -26,6 +28,7 @@ export const PlayerProvider = ({ children }) => {
   const positionUpdateTimer = useRef(null);
 
   useEffect(() => {
+    DownloadManager.init();
     loadLibrary();
     return () => {
       if (sound) sound.unloadAsync();
@@ -81,6 +84,13 @@ export const PlayerProvider = ({ children }) => {
     setRoomUsers([]);
   };
 
+  const shareToRoom = () => {
+    if (currentTrack && roomId) {
+      console.log("[Socket] Sharing track to room:", currentTrack.title);
+      emitPlaybackEvent('TRACK_CHANGE', { track: currentTrack });
+    }
+  };
+
   const emitPlaybackEvent = (type, data) => {
     if (roomId && ws.current && ws.current.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify({
@@ -113,17 +123,20 @@ export const PlayerProvider = ({ children }) => {
       const [
         savedHistory, 
         savedPlaylist, 
+        savedDownloads,
         lastTrack, 
         lastPos
       ] = await Promise.all([
         AsyncStorage.getItem('history'),
         AsyncStorage.getItem('playlist'),
+        AsyncStorage.getItem('downloads'),
         AsyncStorage.getItem('last_track'),
         AsyncStorage.getItem('last_position')
       ]);
 
       if (savedHistory) setHistory(JSON.parse(savedHistory));
       if (savedPlaylist) setPlaylist(JSON.parse(savedPlaylist));
+      if (savedDownloads) setDownloads(Object.values(JSON.parse(savedDownloads)));
       if (lastTrack) setCurrentTrack(JSON.parse(lastTrack));
       if (lastPos) setPosition(parseInt(lastPos, 10));
       
@@ -141,6 +154,22 @@ export const PlayerProvider = ({ children }) => {
     if (hour >= 17 && hour < 22) mood = "chill"; 
     
     setMoodSeeds([mood]);
+  };
+
+  const downloadTrack = async (track) => {
+    try {
+      await DownloadManager.downloadTrack(track);
+      const updated = await DownloadManager.listDownloads();
+      setDownloads(updated);
+    } catch (e) {
+      console.error("Download failed", e);
+    }
+  };
+
+  const deleteDownload = async (trackId) => {
+    await DownloadManager.deleteDownload(trackId);
+    const updated = await DownloadManager.listDownloads();
+    setDownloads(updated);
   };
 
   const saveToHistory = async (track) => {
@@ -177,8 +206,16 @@ export const PlayerProvider = ({ children }) => {
         setSound(null);
       }
 
-      console.log(`[Player] Resolving stream via backend proxy for: ${track.id}`);
-      const streamUrl = await TusicAPI.resolve(track.id);
+      // Check for local download first
+      console.log(`[Player] Checking local storage for: ${track.id}`);
+      let streamUrl = await DownloadManager.getDownloadedUri(track.id);
+      
+      if (streamUrl) {
+        console.log("[Player] Local file found, playing offline.");
+      } else {
+        console.log(`[Player] Resolving stream via backend proxy for: ${track.id}`);
+        streamUrl = await TusicAPI.resolve(track.id);
+      }
 
       if (!streamUrl) {
         throw new Error("The server was unable to resolve a streamable URL for this track.");
@@ -275,10 +312,13 @@ export const PlayerProvider = ({ children }) => {
       queue,
       history,
       playlist,
+      downloads,
       moodSeeds,
       roomId,
       roomUsers,
       playTrack,
+      downloadTrack,
+      deleteDownload,
       togglePlayPause,
       playNext,
       seek,
@@ -286,6 +326,7 @@ export const PlayerProvider = ({ children }) => {
       clearHistory,
       joinRoom,
       leaveRoom,
+      shareToRoom,
       playbackError
     }}>
       {children}

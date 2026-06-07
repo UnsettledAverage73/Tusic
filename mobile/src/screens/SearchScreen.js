@@ -9,13 +9,19 @@ const SearchScreen = () => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searchType, setSearchType] = useState('SONG'); // SONG or PODCAST
   const { playTrack } = usePlayer();
 
   const handleSearch = async () => {
     if (!query.trim()) return;
     setLoading(true);
     try {
-      const data = await TusicAPI.search(query);
+      let data;
+      if (searchType === 'SONG') {
+        data = await TusicAPI.search(query);
+      } else {
+        data = await TusicAPI.searchPodcasts(query);
+      }
       // Deduplicate results by id to prevent "duplicate key" error
       const uniqueResults = Array.from(new Map(data.map(item => [item.id, item])).values());
       setResults(uniqueResults);
@@ -60,6 +66,21 @@ const SearchScreen = () => {
         />
       </View>
 
+      <View style={styles.typeSelector}>
+        <TouchableOpacity 
+          style={[styles.typeBtn, searchType === 'SONG' && styles.typeBtnActive]}
+          onPress={() => setSearchType('SONG')}
+        >
+          <Text style={[styles.typeText, searchType === 'SONG' && styles.typeTextActive]}>[ SONGS ]</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.typeBtn, searchType === 'PODCAST' && styles.typeBtnActive]}
+          onPress={() => setSearchType('PODCAST')}
+        >
+          <Text style={[styles.typeText, searchType === 'PODCAST' && styles.typeTextActive]}>[ PODCASTS ]</Text>
+        </TouchableOpacity>
+      </View>
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color={THEME.colors.text.accent} />
@@ -96,6 +117,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: THEME.colors.border,
     paddingHorizontal: 12,
+  },
+  typeSelector: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    gap: 8,
+    marginBottom: 4,
+  },
+  typeBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  typeBtnActive: {
+    borderColor: THEME.colors.text.accent,
+    backgroundColor: '#111',
+  },
+  typeText: {
+    color: THEME.colors.text.dim,
+    fontFamily: THEME.typography.mono,
+    fontSize: 10,
+  },
+  typeTextActive: {
+    color: THEME.colors.text.accent,
   },
   prompt: {
     color: THEME.colors.text.accent,

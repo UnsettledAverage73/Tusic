@@ -1,24 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { Play, Pause, SkipForward, Music, Heart, Terminal } from 'lucide-react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image, Dimensions, Share } from 'react-native';
+import { Play, Pause, SkipForward, Music, Heart, Terminal, Download, Share2, CheckCircle, Maximize2, Users } from 'lucide-react-native';
 import { usePlayer } from '../context/PlayerContext';
 import { TusicAPI } from '../api';
 import { THEME } from '../styles/theme';
+
+const { width } = Dimensions.get('window');
 
 const PlayerScreen = () => {
   const { 
     currentTrack, isPlaying, isLoading, position, duration, 
     togglePlayPause, playNext, togglePlaylist, playlist,
-    playbackError
+    playbackError, downloadTrack, downloads, roomId, shareToRoom
   } = usePlayer();
   const [lyrics, setLyrics] = useState(null);
   const [loadingLyrics, setLoadingLyrics] = useState(false);
+  const [fullLyrics, setFullLyrics] = useState(false);
+  const scrollRef = useRef(null);
 
   useEffect(() => {
     if (currentTrack) {
       fetchLyrics(currentTrack.id);
+      setFullLyrics(false);
     }
   }, [currentTrack]);
+
+  useEffect(() => {
+    if (lyrics && lyrics.lines && scrollRef.current) {
+      const activeIndex = lyrics.lines.findIndex((line, i) => 
+        position >= line.start_time && (i === lyrics.lines.length - 1 || position < lyrics.lines[i+1].start_time)
+      );
+      if (activeIndex !== -1) {
+        scrollRef.current.scrollTo({ y: activeIndex * 40 - 100, animated: true });
+      }
+    }
+  }, [position, lyrics]);
 
   const fetchLyrics = async (id) => {
     setLoadingLyrics(true);
@@ -30,6 +46,18 @@ const PlayerScreen = () => {
       setLyrics(null);
     } finally {
       setLoadingLyrics(false);
+    }
+  };
+
+  const shareTrack = async () => {
+    try {
+      await Share.share({
+        message: `Listening to ${currentTrack.title} by ${currentTrack.artist} on Tusic! https://www.youtube.com/watch?v=${currentTrack.id}`,
+        url: `https://www.youtube.com/watch?v=${currentTrack.id}`,
+        title: 'Share Track'
+      });
+    } catch (error) {
+      console.error(error.message);
     }
   };
 
@@ -63,7 +91,7 @@ const PlayerScreen = () => {
           <View style={styles.errorBox}>
             <Text style={styles.errorHeader}>!! PLAYBACK_FAILURE !!</Text>
             <Text style={styles.errorText}>{playbackError}</Text>
-            <Text style={styles.errorSubText}>The server was unable to resolve this stream. This is likely due to YouTube's bot protection.</Text>
+            <Text style={styles.errorSubText}>Resolution timeout or network error.</Text>
           </View>
         )}
         <Text style={styles.asciiArt}>{`
@@ -80,43 +108,57 @@ const PlayerScreen = () => {
   }
 
   const isSaved = playlist.some(t => t.id === currentTrack.id);
+  const isDownloaded = downloads.some(d => d.id === currentTrack.id);
 
   return (
     <View style={styles.container}>
-      {/* ASCII Artwork Placeholder */}
-      <View style={styles.artworkContainer}>
-        <Text style={styles.asciiDisc}>{`
-      .ed'''''''''be.
-    .dP'           'Yb.
-   .d'               'b.
-  .d'        .        'b.
- .d'      .d888b.      'b.
- dP      .8888888.      Yb
- dP      .8888888.      Yb
- Yb      'Y88888P'      dP
- 'b.      'Y888P'      .d'
-  'b.        '        .d'
-   'Yb.             .dP'
-     'Yb...........dP'
-        ''!!!!!!!''
-        `}</Text>
-      </View>
+      {!fullLyrics && (
+        <>
+          <View style={styles.artworkContainer}>
+            {currentTrack.thumbnail ? (
+              <Image 
+                source={{ uri: currentTrack.thumbnail }} 
+                style={styles.albumArt}
+                resizeMode="cover"
+              />
+            ) : (
+              <Music size={100} color={THEME.colors.text.dim} />
+            )}
+          </View>
 
-      <View style={styles.trackInfo}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title} numberOfLines={1}>> {currentTrack.title}</Text>
-          <Text style={styles.artist} numberOfLines={1}>$ artist: {currentTrack.artist}</Text>
-        </View>
-        <TouchableOpacity onPress={() => togglePlaylist(currentTrack)}>
-          <Heart size={24} color={isSaved ? THEME.colors.text.accent : THEME.colors.text.dim} fill={isSaved ? THEME.colors.text.accent : "none"} />
-        </TouchableOpacity>
-      </View>
+          <View style={styles.trackInfo}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.title} numberOfLines={1}>> {currentTrack.title}</Text>
+              <Text style={styles.artist} numberOfLines={1}>$ artist: {currentTrack.artist}</Text>
+            </View>
+            <View style={styles.trackActions}>
+              {roomId && (
+                <TouchableOpacity onPress={shareToRoom} style={{marginRight: 15}}>
+                  <Users size={22} color={THEME.colors.text.accent} />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={shareTrack} style={{marginRight: 15}}>
+                <Share2 size={22} color={THEME.colors.text.dim} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => downloadTrack(currentTrack)} style={{marginRight: 15}}>
+                {isDownloaded ? (
+                  <CheckCircle size={22} color={THEME.colors.text.accent} />
+                ) : (
+                  <Download size={22} color={THEME.colors.text.dim} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => togglePlaylist(currentTrack)}>
+                <Heart size={24} color={isSaved ? THEME.colors.text.accent : THEME.colors.text.dim} fill={isSaved ? THEME.colors.text.accent : "none"} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </>
+      )}
 
       {playbackError && (
         <View style={styles.errorBox}>
           <Text style={styles.errorHeader}>!! PLAYBACK_FAILURE !!</Text>
           <Text style={styles.errorText}>{playbackError}</Text>
-          <Text style={styles.errorSubText}>Check logs for details.</Text>
         </View>
       )}
 
@@ -132,32 +174,53 @@ const PlayerScreen = () => {
             {isLoading ? (
               <ActivityIndicator color={THEME.colors.text.accent} size="small" />
             ) : isPlaying ? (
-              <Text style={styles.tuiButtonText}>[ PAUSE ]</Text>
+              <Pause size={24} color={THEME.colors.text.primary} />
             ) : (
-              <Text style={styles.tuiButtonText}>[ PLAY ]</Text>
+              <Play size={24} color={THEME.colors.text.primary} />
             )}
           </TouchableOpacity>
           <TouchableOpacity onPress={playNext} style={styles.tuiButton}>
-             <Text style={styles.tuiButtonText}>[ NEXT ]</Text>
+             <SkipForward size={24} color={THEME.colors.text.primary} />
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.lyricsContainer}>
-        <Text style={styles.lyricsHeader}>-- LYRICS_LOG --</Text>
-        <ScrollView style={styles.lyricsScroll}>
+      <TouchableOpacity 
+        style={[styles.lyricsContainer, fullLyrics && styles.fullLyricsContainer]} 
+        onPress={() => setFullLyrics(!fullLyrics)}
+        activeOpacity={0.9}
+      >
+        <View style={styles.lyricsHeaderContainer}>
+          <Text style={styles.lyricsHeader}>
+            -- {fullLyrics ? 'EXIT_IMMERSIVE_MODE' : 'SYNCED_LYRICS_SYNC'} --
+          </Text>
+          {!fullLyrics && <Maximize2 size={12} color={THEME.colors.text.accent} />}
+        </View>
+        
+        <ScrollView 
+          ref={scrollRef}
+          style={styles.lyricsScroll}
+          contentContainerStyle={{ paddingBottom: 150 }}
+          pointerEvents="none"
+          scrollEnabled={fullLyrics}
+        >
           {loadingLyrics ? (
             <ActivityIndicator color={THEME.colors.text.accent} />
           ) : lyrics ? (
             lyrics.lines ? (
-              lyrics.lines.map((line, i) => (
-                <Text key={i} style={[
-                  styles.lyricLine,
-                  position >= line.start_time && (i === lyrics.lines.length - 1 || position < lyrics.lines[i+1].start_time) && styles.activeLyric
-                ]}>
-                  {position >= line.start_time && (i === lyrics.lines.length - 1 || position < lyrics.lines[i+1].start_time) ? '> ' : '  '}{line.text}
-                </Text>
-              ))
+              lyrics.lines.map((line, i) => {
+                const isActive = position >= line.start_time && (i === lyrics.lines.length - 1 || position < lyrics.lines[i+1].start_time);
+                return (
+                  <Text key={i} style={[
+                    styles.lyricLine,
+                    isActive && styles.activeLyric,
+                    fullLyrics && styles.fullLyricLine,
+                    fullLyrics && isActive && styles.fullActiveLyric
+                  ]}>
+                    {isActive ? '> ' : '  '}{line.text}
+                  </Text>
+                );
+              })
             ) : (
               <Text style={styles.plainLyrics}>{lyrics.lyrics || "No data."}</Text>
             )
@@ -165,7 +228,7 @@ const PlayerScreen = () => {
             <Text style={styles.plainLyrics}>_NO_LYRICS_FOUND</Text>
           )}
         </ScrollView>
-      </View>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -196,13 +259,16 @@ const styles = StyleSheet.create({
   },
   artworkContainer: {
     alignItems: 'center',
-    marginVertical: 10,
+    marginVertical: 20,
+    backgroundColor: THEME.colors.surface,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
   },
-  asciiDisc: {
-    color: THEME.colors.text.dim,
-    fontFamily: THEME.typography.mono,
-    fontSize: 7,
-    lineHeight: 8,
+  albumArt: {
+    width: width - 80,
+    height: width - 80,
+    backgroundColor: '#111',
   },
   trackInfo: {
     flexDirection: 'row',
@@ -212,15 +278,19 @@ const styles = StyleSheet.create({
     borderLeftColor: THEME.colors.text.accent,
     paddingLeft: 12,
   },
+  trackActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   title: {
     color: THEME.colors.text.primary,
-    fontSize: THEME.typography.size.lg,
+    fontSize: 18,
     fontFamily: THEME.typography.mono,
     fontWeight: 'bold',
   },
   artist: {
     color: THEME.colors.text.secondary,
-    fontSize: THEME.typography.size.sm,
+    fontSize: 12,
     fontFamily: THEME.typography.mono,
   },
   errorBox: {
@@ -241,12 +311,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontFamily: THEME.typography.mono,
     fontSize: 10,
-  },
-  errorSubText: {
-    color: '#faa',
-    fontFamily: THEME.typography.mono,
-    fontSize: 8,
-    marginTop: 4,
   },
   progressBar: {
     fontFamily: THEME.typography.mono,
@@ -270,19 +334,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
+    gap: 24,
   },
   tuiButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    padding: 10,
     borderWidth: 1,
     borderColor: THEME.colors.border,
     backgroundColor: THEME.colors.surface,
-  },
-  tuiButtonText: {
-    color: THEME.colors.text.primary,
-    fontFamily: THEME.typography.mono,
-    fontSize: 12,
   },
   lyricsContainer: {
     flex: 1,
@@ -292,11 +350,28 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: THEME.colors.surface,
   },
+  fullLyricsContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    marginTop: 0,
+    zIndex: 100,
+    paddingTop: 60,
+    backgroundColor: '#000',
+  },
+  lyricsHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
   lyricsHeader: {
     color: THEME.colors.text.accent,
     fontSize: 10,
     fontFamily: THEME.typography.mono,
-    marginBottom: 8,
     textAlign: 'center',
   },
   lyricsScroll: {
@@ -306,11 +381,22 @@ const styles = StyleSheet.create({
     color: THEME.colors.text.dim,
     fontFamily: THEME.typography.mono,
     fontSize: 14,
-    marginBottom: 6,
+    marginBottom: 12,
+    lineHeight: 20,
   },
   activeLyric: {
     color: THEME.colors.text.primary,
-    backgroundColor: '#111',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  fullLyricLine: {
+    fontSize: 22,
+    marginBottom: 20,
+    lineHeight: 28,
+  },
+  fullActiveLyric: {
+    fontSize: 32,
+    color: THEME.colors.text.accent,
   },
   plainLyrics: {
     color: THEME.colors.text.secondary,

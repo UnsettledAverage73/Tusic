@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Play, Pause, SkipForward, Music } from 'lucide-react-native';
 import { usePlayer } from '../context/PlayerContext';
+import { THEME } from '../styles/theme';
 
 const MiniPlayer = () => {
   const { currentTrack, isPlaying, togglePlayPause, playNext } = usePlayer();
@@ -11,7 +12,11 @@ const MiniPlayer = () => {
   return (
     <View style={styles.container}>
       <View style={styles.artwork}>
-        <Music size={20} color="#888" />
+        {currentTrack.thumbnail ? (
+          <Image source={{ uri: currentTrack.thumbnail }} style={styles.thumbnail} />
+        ) : (
+          <Music size={20} color="#888" />
+        )}
       </View>
       <View style={styles.info}>
         <Text style={styles.title} numberOfLines={1}>{currentTrack.title}</Text>
@@ -19,7 +24,7 @@ const MiniPlayer = () => {
       </View>
       <View style={styles.controls}>
         <TouchableOpacity onPress={togglePlayPause} style={styles.button}>
-          {isPlaying ? <Pause size={24} color="#fff" fill="#fff" /> : <Play size={24} color="#fff" fill="#fff" />}
+          {isPlaying ? <Pause size={24} color={THEME.colors.text.accent} fill={THEME.colors.text.accent} /> : <Play size={24} color={THEME.colors.text.accent} fill={THEME.colors.text.accent} />}
         </TouchableOpacity>
         <TouchableOpacity onPress={playNext} style={styles.button}>
           <SkipForward size={24} color="#fff" fill="#fff" />
@@ -33,7 +38,9 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1DB954',
+    backgroundColor: '#000',
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
     marginHorizontal: 8,
     marginBottom: 8,
     padding: 8,
@@ -46,11 +53,16 @@ const styles = StyleSheet.create({
   artwork: {
     width: 40,
     height: 40,
-    backgroundColor: '#000',
+    backgroundColor: '#111',
     borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+  },
+  thumbnail: {
+    width: 40,
+    height: 40,
+    borderRadius: 4,
   },
   info: {
     flex: 1,
@@ -58,15 +70,18 @@ const styles = StyleSheet.create({
   title: {
     color: '#fff',
     fontSize: 14,
+    fontFamily: THEME.typography.mono,
     fontWeight: 'bold',
   },
   artist: {
     color: 'rgba(255,255,255,0.7)',
-    fontSize: 12,
+    fontFamily: THEME.typography.mono,
+    fontSize: 10,
   },
   controls: {
     flexDirection: 'row',
     gap: 16,
+    alignItems: 'center',
   },
   button: {
     padding: 4,

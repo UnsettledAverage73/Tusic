@@ -27,6 +27,10 @@ export const TusicAPI = {
     const response = await api.get(`/search?q=${encodeURIComponent(query)}`);
     return response.data.results;
   },
+  searchPodcasts: async (query) => {
+    const response = await api.get(`/podcasts?q=${encodeURIComponent(query)}`);
+    return response.data.results;
+  },
   getRadio: async (videoId) => {
     const response = await api.get(`/radio?id=${videoId}`);
     return response.data.results;

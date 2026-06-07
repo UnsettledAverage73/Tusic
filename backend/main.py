@@ -55,6 +55,14 @@ def search(q: str):
         print(f"Search error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/podcasts")
+def podcasts(q: str):
+    try:
+        results = tusic_api.search_podcasts(q)
+        return {"results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/radio")
 def radio(id: str):
     results = tusic_api.get_radio_songs(id)
@@ -70,10 +78,20 @@ def resolve(id: str):
 
 @app.get("/lyrics")
 def lyrics(id: str):
-    browse_id = tusic_api.get_lyrics_browse_id(id)
+    # 'id' is the video_id here
+    browse_id, title, artist = tusic_api.get_lyrics_browse_id(id)
+    
+    # 1. Try to get synced lyrics first
+    if title and artist:
+        synced_lyrics = tusic_api.get_synced_lyrics(title, artist)
+        if synced_lyrics:
+            return {"lyrics": synced_lyrics}
+            
+    # 2. Fallback to YTMusic plain lyrics
     if browse_id:
         lyrics_data = tusic_api.get_lyrics(browse_id)
         return {"lyrics": lyrics_data}
+        
     return {"lyrics": None}
 
 if __name__ == "__main__":

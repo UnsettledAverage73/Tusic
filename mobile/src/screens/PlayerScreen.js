@@ -8,7 +8,8 @@ import { THEME } from '../styles/theme';
 const PlayerScreen = () => {
   const { 
     currentTrack, isPlaying, isLoading, position, duration, 
-    togglePlayPause, playNext, togglePlaylist, playlist 
+    togglePlayPause, playNext, togglePlaylist, playlist,
+    playbackError
   } = usePlayer();
   const [lyrics, setLyrics] = useState(null);
   const [loadingLyrics, setLoadingLyrics] = useState(false);
@@ -103,6 +104,14 @@ const PlayerScreen = () => {
           <Heart size={24} color={isSaved ? THEME.colors.text.accent : THEME.colors.text.dim} fill={isSaved ? THEME.colors.text.accent : "none"} />
         </TouchableOpacity>
       </View>
+
+      {playbackError && (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorHeader}>!! PLAYBACK_FAILURE !!</Text>
+          <Text style={styles.errorText}>{playbackError}</Text>
+          <Text style={styles.errorSubText}>Check logs for details.</Text>
+        </View>
+      )}
 
       <View style={styles.controlsContainer}>
         {renderProgressBar()}
@@ -206,6 +215,31 @@ const styles = StyleSheet.create({
     color: THEME.colors.text.secondary,
     fontSize: THEME.typography.size.sm,
     fontFamily: THEME.typography.mono,
+  },
+  errorBox: {
+    backgroundColor: '#300',
+    borderWidth: 1,
+    borderColor: '#f00',
+    padding: 10,
+    marginBottom: 20,
+  },
+  errorHeader: {
+    color: '#f00',
+    fontFamily: THEME.typography.mono,
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  errorText: {
+    color: '#fff',
+    fontFamily: THEME.typography.mono,
+    fontSize: 10,
+  },
+  errorSubText: {
+    color: '#faa',
+    fontFamily: THEME.typography.mono,
+    fontSize: 8,
+    marginTop: 4,
   },
   progressBar: {
     fontFamily: THEME.typography.mono,

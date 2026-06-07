@@ -160,43 +160,65 @@ export const PlayerProvider = ({ children }) => {
     await AsyncStorage.setItem('playlist', JSON.stringify(updatedPlaylist));
   };
 
+  const [playbackError, setPlaybackError] = useState(null);
+
   const playTrack = async (track, newQueue = [], isRemote = false) => {
     try {
+      setPlaybackError(null);
       console.log(`[Player] Attempting to play track: ${track.title} (${track.id})`);
       setIsLoading(true);
+      
       if (sound) {
         console.log("[Player] Unloading previous sound");
         await sound.unloadAsync();
+        setSound(null);
       }
 
       console.log(`[Player] Resolving stream locally for: ${track.id}`);
-      let streamUrl;
+      let streamUrl = null;
+      
       try {
+        // Try local resolution
         const urls = await ytdl(track.id, { quality: 'highestaudio' });
-        streamUrl = urls[0]?.url;
+        if (urls && urls[0] && urls[0].url) {
+          streamUrl = urls[0].url;
+          console.log("[Player] Local resolution success");
+        }
       } catch (ytdlError) {
-        console.warn("[Player] Local resolution failed, falling back to backend:", ytdlError.message);
+        console.warn("[Player] Local resolution failed:", ytdlError.message);
+      }
+
+      // Fallback to backend if local failed or returned nothing
+      if (!streamUrl) {
+        console.log("[Player] Falling back to backend resolver...");
         streamUrl = await TusicAPI.resolve(track.id);
       }
 
-      console.log(`[Player] Stream URL resolved: ${streamUrl ? 'SUCCESS' : 'FAILED'}`);
-      
       if (!streamUrl) {
-        throw new Error("Could not resolve stream URL");
+        throw new Error("Could not obtain a valid stream URL from any source.");
       }
 
-      console.log("[Player] Creating new sound instance");
-      const { sound: newSound } = await Audio.Sound.createAsync(
+      console.log("[Player] Creating sound with URL:", streamUrl.substring(0, 50) + "...");
+      
+      const { sound: newSound, status } = await Audio.Sound.createAsync(
         { uri: streamUrl },
-        { shouldPlay: true },
+        { 
+          shouldPlay: true,
+          progressUpdateIntervalMillis: 500,
+          positionMillis: 0
+        },
         onPlaybackStatusUpdate
       );
+
+      if (status.error) {
+        throw new Error(`Expo AV status error: ${status.error}`);
+      }
 
       setSound(newSound);
       setCurrentTrack(track);
       setIsPlaying(true);
       setIsLoading(false);
-      console.log("[Player] Playback started successfully");
+      console.log("[Player] Playback instance created and playing");
       
       saveToHistory(track);
       AsyncStorage.setItem('last_track', JSON.stringify(track));
@@ -208,12 +230,12 @@ export const PlayerProvider = ({ children }) => {
       if (newQueue.length > 0) {
         setQueue(newQueue);
       } else {
-        console.log("[Player] Fetching radio for queue");
         const radioTracks = await TusicAPI.getRadio(track.id);
         setQueue(radioTracks);
       }
     } catch (e) {
-      console.error("[Player] Playback error:", e);
+      console.error("[Player] CRITICAL Playback error:", e);
+      setPlaybackError(e.message);
       setIsLoading(false);
     }
   };
@@ -277,7 +299,8 @@ export const PlayerProvider = ({ children }) => {
       seek,
       togglePlaylist,
       joinRoom,
-      leaveRoom
+      leaveRoom,
+      playbackError
     }}>
       {children}
     </PlayerContext.Provider>

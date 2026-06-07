@@ -20,8 +20,12 @@ def health_check():
 
 @app.get("/search")
 def search(q: str):
-    results = tusic_api.search_songs(q)
-    return {"results": results}
+    try:
+        results = tusic_api.search_songs(q)
+        return {"results": results}
+    except Exception as e:
+        print(f"Search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/radio")
 def radio(id: str):

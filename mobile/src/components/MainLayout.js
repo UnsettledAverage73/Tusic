@@ -18,11 +18,11 @@ const MainLayout = () => {
 
   const renderActivePane = () => {
     switch (activePane) {
-      case 'Search': return <SearchScreen />;
-      case 'Library': return <LibraryScreen />;
+      case 'Search': return <SearchScreen onNavigate={setActivePane} />;
+      case 'Library': return <LibraryScreen onNavigate={setActivePane} />;
       case 'Player': return <PlayerScreen />;
       case 'Zen': return <ZenScreen />;
-      default: return <SearchScreen />;
+      default: return <SearchScreen onNavigate={setActivePane} />;
     }
   };
 
@@ -66,7 +66,9 @@ const MainLayout = () => {
       </View>
 
       {/* MiniPlayer integration - only for mobile and when not on Player/Zen screens */}
-      {currentTrack && !isTablet && activePane !== 'Player' && activePane !== 'Zen' && <MiniPlayer />}
+      {currentTrack && !isTablet && activePane !== 'Player' && activePane !== 'Zen' && (
+        <MiniPlayer onOpenPlayer={() => setActivePane('Player')} />
+      )}
 
       {/* TUI Navigation Footer (Status Line) */}
       {!isTablet && (

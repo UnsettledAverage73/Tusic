@@ -5,7 +5,7 @@ import { TusicAPI } from '../api';
 import { usePlayer } from '../context/PlayerContext';
 import { THEME } from '../styles/theme';
 
-const SearchScreen = () => {
+const SearchScreen = ({ onNavigate }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -39,7 +39,10 @@ const SearchScreen = () => {
   const renderItem = ({ item }) => (
     <TouchableOpacity 
       style={styles.songItem}
-      onPress={() => playTrack(item, results)}
+      onPress={() => {
+        playTrack(item, results);
+        if (onNavigate) onNavigate('Player');
+      }}
     >
       <View style={styles.songInfo}>
         <Text style={styles.songTitle} numberOfLines={1}>

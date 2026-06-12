@@ -20,6 +20,7 @@ export const PlayerProvider = ({ children }) => {
   const [downloads, setDownloads] = useState([]);
   const [moodSeeds, setMoodSeeds] = useState([]);
   const [playbackError, setPlaybackError] = useState(null);
+  const [playbackHistory, setPlaybackHistory] = useState([]);
   
   // Collaborative Room State
   const [roomId, setRoomId] = useState(null);
@@ -199,11 +200,16 @@ export const PlayerProvider = ({ children }) => {
     await AsyncStorage.removeItem('history');
   };
 
-  const playTrack = async (track, newQueue = [], isRemote = false) => {
+  const playTrack = async (track, newQueue = [], isRemote = false, skipHistory = false) => {
     try {
       setPlaybackError(null);
       console.log(`[Player] Attempting to play track: ${track.title} (${track.id})`);
       setIsLoading(true);
+
+      // Save current track to history before switching
+      if (!skipHistory && currentTrack) {
+        setPlaybackHistory(prev => [currentTrack, ...prev].slice(0, 50));
+      }
       
       if (sound) {
         console.log("[Player] Unloading previous sound");
@@ -330,6 +336,16 @@ export const PlayerProvider = ({ children }) => {
     }
   };
 
+  const playPrevious = () => {
+    if (playbackHistory.length > 0) {
+      const prevTrack = playbackHistory[0];
+      const newHistory = playbackHistory.slice(1);
+      setPlaybackHistory(newHistory);
+      // Play previous track and put current track back at the start of queue
+      playTrack(prevTrack, [currentTrack, ...queue], false, true);
+    }
+  };
+
   const seek = async (millis) => {
     if (sound) {
       await sound.setPositionAsync(millis);
@@ -356,6 +372,7 @@ export const PlayerProvider = ({ children }) => {
       deleteDownload,
       togglePlayPause,
       playNext,
+      playPrevious,
       seek,
       togglePlaylist,
       clearHistory,

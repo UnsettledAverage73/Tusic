@@ -4,13 +4,13 @@ import { Play, Pause, SkipForward, Music } from 'lucide-react-native';
 import { usePlayer } from '../context/PlayerContext';
 import { THEME } from '../styles/theme';
 
-const MiniPlayer = () => {
+const MiniPlayer = ({ onOpenPlayer }) => {
   const { currentTrack, isPlaying, togglePlayPause, playNext } = usePlayer();
 
   if (!currentTrack) return null;
 
   return (
-    <View style={styles.container}>
+    <TouchableOpacity style={styles.container} onPress={onOpenPlayer} activeOpacity={0.9}>
       <View style={styles.artwork}>
         {currentTrack.thumbnail ? (
           <Image source={{ uri: currentTrack.thumbnail }} style={styles.thumbnail} />

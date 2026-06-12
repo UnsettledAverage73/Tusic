@@ -4,14 +4,17 @@ import { Play, Heart, Clock, Download, Trash2 } from 'lucide-react-native';
 import { usePlayer } from '../context/PlayerContext';
 import { THEME } from '../styles/theme';
 
-const LibraryScreen = () => {
+const LibraryScreen = ({ onNavigate }) => {
   const { history, playlist, downloads, playTrack, clearHistory, deleteDownload } = usePlayer();
   const [tab, setTab] = useState('Playlist');
 
   const renderItem = ({ item }) => (
     <TouchableOpacity 
       style={styles.songItem}
-      onPress={() => playTrack(item, tab === 'Playlist' ? playlist : (tab === 'Downloads' ? downloads : history))}
+      onPress={() => {
+        playTrack(item, tab === 'Playlist' ? playlist : (tab === 'Downloads' ? downloads : history));
+        if (onNavigate) onNavigate('Player');
+      }}
     >
       <View style={styles.songInfo}>
         <Text style={styles.songTitle} numberOfLines={1}>

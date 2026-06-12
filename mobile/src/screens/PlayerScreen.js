@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image, Dimensions, Share } from 'react-native';
-import { Play, Pause, SkipForward, Music, Heart, Terminal, Download, Share2, CheckCircle, Maximize2, Users } from 'lucide-react-native';
+import { Play, Pause, SkipForward, SkipBack, Music, Heart, Terminal, Download, Share2, CheckCircle, Maximize2, Users } from 'lucide-react-native';
 import { usePlayer } from '../context/PlayerContext';
 import { TusicAPI } from '../api';
 import { THEME } from '../styles/theme';
@@ -10,7 +10,7 @@ const { width } = Dimensions.get('window');
 const PlayerScreen = () => {
   const { 
     currentTrack, isPlaying, isLoading, position, duration, 
-    togglePlayPause, playNext, togglePlaylist, playlist,
+    togglePlayPause, playNext, playPrevious, togglePlaylist, playlist,
     playbackError, downloadTrack, downloads, roomId, shareToRoom
   } = usePlayer();
   const [lyrics, setLyrics] = useState(null);
@@ -170,13 +170,16 @@ const PlayerScreen = () => {
         </View>
 
         <View style={styles.buttons}>
+          <TouchableOpacity onPress={playPrevious} style={styles.tuiButton}>
+             <SkipBack size={24} color={THEME.colors.text.primary} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={togglePlayPause} style={styles.tuiButton}>
             {isLoading ? (
               <ActivityIndicator color={THEME.colors.text.accent} size="small" />
             ) : isPlaying ? (
-              <Pause size={24} color={THEME.colors.text.primary} />
+              <Pause size={32} color={THEME.colors.text.primary} fill={THEME.colors.text.primary} />
             ) : (
-              <Play size={24} color={THEME.colors.text.primary} />
+              <Play size={32} color={THEME.colors.text.primary} fill={THEME.colors.text.primary} />
             )}
           </TouchableOpacity>
           <TouchableOpacity onPress={playNext} style={styles.tuiButton}>

@@ -1,51 +1,62 @@
 import { YouTubeSearch } from './search';
 import { Platform } from 'react-native';
 
-// Replace with your Render URL or local IP for testing
-export const API_BASE_URL = 'http://172.20.10.8:8000'; 
-
 /**
- * Lightweight Fetch-based API client to avoid Axios/whatwg-url 
- * compatibility issues with Hermes on Web.
+ * DYNAMIC API DISCOVERY
+ * Automatically detects the 'System IP' without hardcoding.
  */
+const getBaseUrl = () => {
+  try {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const host = window.location.hostname;
+      const protocol = window.location.protocol;
+      
+      if (host === 'localhost' || host.startsWith('192.168.') || host.startsWith('172.') || host.startsWith('10.')) {
+        return `${protocol}//${host}:8000`;
+      }
+    }
+  } catch (e) {
+    console.warn("[Tusic] Could not auto-detect Web host", e);
+  }
+  
+  if (__DEV__) {
+    return 'http://172.20.10.8:8000';
+  }
+
+  return 'https://tusic-backend.onrender.com';
+};
+
+export const API_BASE_URL = getBaseUrl();
+
 const apiFetch = async (endpoint) => {
   const url = `${API_BASE_URL}${endpoint}`;
-  console.log(`[API] Starting Request: ${url}`);
+  console.log(`[API] System Route: ${url}`);
   
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP_${response.status}`);
-    }
-    
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP_${response.status}`);
     const data = await response.json();
-    console.log(`[API] Response Success`);
     return { data };
   } catch (error) {
-    console.log(`[API] Response Error: ${error.message}`);
+    // If the local IP has changed, fallback to Render automatically
+    if (!API_BASE_URL.includes('onrender.com')) {
+      const backupUrl = `https://tusic-backend.onrender.com${endpoint}`;
+      console.log(`[API] System IP changed or unreachable, falling back to Render: ${backupUrl}`);
+      const response = await fetch(backupUrl);
+      const data = await response.json();
+      return { data };
+    }
     throw error;
   }
 };
 
 export const TusicAPI = {
   search: async (query) => {
-    // 1. Try Decentralized Client-Side Search (FAST & RELIABLE)
-    // Only attempt on native mobile to avoid CORS blocks in the browser.
+    // APK/Device: Always try to use the 'Real Device' IP first
     if (Platform.OS !== 'web') {
-      const localResults = await YouTubeSearch.search(query);
-      if (localResults && localResults.length > 0) {
-        return localResults;
-      }
+      const local = await YouTubeSearch.search(query);
+      if (local && local.length > 0) return local;
     }
-
-    // 2. Fallback to Backend Proxy (Required for Web and blocked native nodes)
-    console.log("[API] Local search unavailable or failed, using backend proxy...");
     const response = await apiFetch(`/search?q=${encodeURIComponent(query)}`);
     return response.data.results;
   },

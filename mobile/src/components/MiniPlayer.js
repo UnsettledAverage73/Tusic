@@ -30,7 +30,7 @@ const MiniPlayer = ({ onOpenPlayer }) => {
           <SkipForward size={24} color="#fff" fill="#fff" />
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

@@ -19,14 +19,21 @@ const ZenScreen = () => {
 
   useEffect(() => {
     let subscription;
-    Accelerometer.setUpdateInterval(100);
-    subscription = Accelerometer.addListener(data => {
-      const { x, y, z } = data;
-      const totalForce = Math.sqrt(x*x + y*y + z*z);
-      if (totalForce > 2.5) { // Shake threshold
-        handleShake();
-      }
-    });
+    const setupAccelerometer = async () => {
+      const isAvailable = await Accelerometer.isAvailableAsync();
+      if (!isAvailable) return;
+      
+      Accelerometer.setUpdateInterval(100);
+      subscription = Accelerometer.addListener(data => {
+        const { x, y, z } = data;
+        const totalForce = Math.sqrt(x*x + y*y + z*z);
+        if (totalForce > 2.5) { // Shake threshold
+          handleShake();
+        }
+      });
+    };
+    
+    setupAccelerometer();
     return () => subscription && subscription.remove();
   }, []);
 

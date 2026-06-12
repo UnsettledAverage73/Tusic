@@ -202,9 +202,8 @@ const PlayerScreen = () => {
         
         <ScrollView 
           ref={scrollRef}
-          style={styles.lyricsScroll}
+          style={[styles.lyricsScroll, !fullLyrics && { pointerEvents: 'none' }]}
           contentContainerStyle={{ paddingBottom: 150 }}
-          pointerEvents="none"
           scrollEnabled={fullLyrics}
         >
           {loadingLyrics ? (

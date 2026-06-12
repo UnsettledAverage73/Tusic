@@ -8,8 +8,9 @@ export const YouTubeSearch = {
   search: async (query) => {
     console.log(`[Search] Local decentralized search started for: ${query}`);
     
-    // Note: On web, this will likely fail due to CORS unless a proxy is used.
-    // However, we follow the user instruction to try from the "currently using system".
+    if (Platform.OS === 'web') {
+      console.warn("[Search] Direct hits to YouTube on Web will likely fail due to CORS. This is a browser security restriction. Use the APK for direct phone-to-YouTube hits.");
+    }
     try {
       const url = 'https://www.youtube.com/youtubei/v1/search';
       const payload = {

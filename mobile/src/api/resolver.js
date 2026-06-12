@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import ytdl from 'react-native-ytdl';
+import { API_BASE_URL } from './index';
 
 /**
  * YouTube InnerTube Resolver (Production Hardened Edition)
@@ -18,10 +19,21 @@ export const YouTubeResolver = {
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
     console.log(`[Resolver] Initializing multi-tier resolution for: ${videoId}`);
 
-    // Skip local resolution on web due to CORS restrictions.
-    // The PlayerContext will automatically fall back to the backend proxy.
+    // SMART WEB RESOLUTION
+    // Use the local system backend (System IP) for web requests to bypass CORS 
+    // while still ensuring the request comes from your residential connection.
     if (Platform.OS === 'web') {
-      console.log("[Resolver] Skipping local tiers on web (CORS)");
+      const isLocal = API_BASE_URL.includes('localhost') || 
+                      API_BASE_URL.includes('127.0.0.1') || 
+                      API_BASE_URL.includes('172.') || 
+                      API_BASE_URL.includes('192.168.') || 
+                      API_BASE_URL.includes('10.');
+      
+      if (isLocal) {
+        console.log(`[Resolver] Web detected: Routing via local system backend (${API_BASE_URL}).`);
+        return null; // Triggers automatic fallback to backend proxy in PlayerContext
+      }
+      console.log("[Resolver] Web detected: Local backend unreachable, using Render.");
       return null;
     }
 

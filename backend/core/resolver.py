@@ -14,7 +14,10 @@ class StreamResolver:
             "https://iv.ggtyler.dev",
             "https://invidious.flokinet.to",
             "https://inv.zzls.xyz",
-            "https://invidious.io.lol"
+            "https://invidious.io.lol",
+            "https://invidious.namazso.eu",
+            "https://inv.n8pjl.ca",
+            "https://invidious.snopyta.org"
         ]
         self.piped_instances = [
             "https://api.piped.vicr.me",
@@ -66,17 +69,34 @@ class StreamResolver:
         # 3. Last Resort: yt-dlp (Only load if absolutely necessary)
         try:
             print(f"[Resolver] Fallback to heavy yt-dlp for {video_id}")
-            import yt_dlp # Lazy import to save ~150MB RAM during normal use
+            import yt_dlp 
             
-            ydl_opts = {
-                'format': 'bestaudio/best',
-                'quiet': True,
-                'no_warnings': True,
-                'nocheckcertificate': True,
-            }
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
-                return info['url']
+            # Use multiple sets of options for better compatibility
+            attempts = [
+                {
+                    'format': 'bestaudio/best',
+                    'quiet': True,
+                    'no_warnings': True,
+                    'nocheckcertificate': True,
+                },
+                {
+                    'format': 'ba',
+                    'quiet': True,
+                    'extract_flat': True,
+                    'force_generic_extractor': True,
+                }
+            ]
+
+            for opts in attempts:
+                try:
+                    with yt_dlp.YoutubeDL(opts) as ydl:
+                        info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+                        if 'url' in info:
+                            return info['url']
+                except Exception as e:
+                    print(f"[Resolver] yt-dlp attempt failed: {e}")
+                    continue
+
         except Exception as e:
             print(f"[Resolver] Critical Failure: {e}")
             raise Exception("ALL_RESOLVERS_EXHAUSTED: Media block persistent across all global nodes.")

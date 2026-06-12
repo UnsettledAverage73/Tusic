@@ -1,11 +1,14 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TusicAPI } from './index';
+import { Platform } from 'react-native';
 
 const DOWNLOAD_DIR = `${FileSystem.documentDirectory}songs/`;
 
 export const DownloadManager = {
   init: async () => {
+    if (Platform.OS === 'web') return;
+    
     const info = await FileSystem.getInfoAsync(DOWNLOAD_DIR);
     if (!info.exists) {
       await FileSystem.makeDirectoryAsync(DOWNLOAD_DIR, { intermediates: true });
@@ -13,6 +16,10 @@ export const DownloadManager = {
   },
 
   downloadTrack: async (track) => {
+    if (Platform.OS === 'web') {
+      console.warn("[DownloadManager] Downloads are not supported on web.");
+      return null;
+    }
     try {
       // 1. Resolve stream URL
       const streamUrl = await TusicAPI.resolve(track.id);
@@ -50,6 +57,7 @@ export const DownloadManager = {
   },
 
   getDownloadedUri: async (trackId) => {
+    if (Platform.OS === 'web') return null;
     const savedDownloads = await AsyncStorage.getItem('downloads');
     if (!savedDownloads) return null;
     const downloads = JSON.parse(savedDownloads);
@@ -63,6 +71,7 @@ export const DownloadManager = {
   },
 
   deleteDownload: async (trackId) => {
+    if (Platform.OS === 'web') return;
     const savedDownloads = await AsyncStorage.getItem('downloads');
     if (!savedDownloads) return;
     const downloads = JSON.parse(savedDownloads);

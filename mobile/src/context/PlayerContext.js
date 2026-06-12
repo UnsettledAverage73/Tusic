@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Audio } from 'expo-av';
-import { TusicAPI } from '../api';
+import { TusicAPI, API_BASE_URL } from '../api';
 import { DownloadManager } from '../api/download';
 import { YouTubeResolver } from '../api/resolver';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -42,7 +42,11 @@ export const PlayerProvider = ({ children }) => {
   const joinRoom = (id) => {
     if (ws.current) ws.current.close();
     
-    const wsUrl = `wss://tusic-backend.onrender.com/ws/room/${id}`;
+    // Convert HTTP URL to WS URL dynamically
+    const protocol = API_BASE_URL.startsWith('https') ? 'wss' : 'ws';
+    const host = API_BASE_URL.replace(/^https?:\/\//, '');
+    const wsUrl = `${protocol}://${host}/ws/room/${id}`;
+    
     console.log(`[Socket] Connecting to Room: ${id} at ${wsUrl}`);
     
     ws.current = new WebSocket(wsUrl);

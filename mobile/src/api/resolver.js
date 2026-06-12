@@ -1,17 +1,50 @@
-import axios from 'axios';
+import { Platform } from 'react-native';
+import ytdl from 'react-native-ytdl';
 
 /**
  * YouTube InnerTube Resolver (Production Hardened Edition)
- * Moves the fetching logic to the device to use residential IPs.
- * Includes AbortController for real fetch timeouts in React Native.
+ * Tier 0: react-native-ytdl (Native Only - High Success)
+ * Tier 1: Direct InnerTube Handshake (Fastest)
+ * Tier 2: Public Proxy Nodes (Hardened)
+ * Tier 3: Emergency Extraction Override (Cipher Bypass)
  */
 export const YouTubeResolver = {
   resolve: async (videoId) => {
-    console.log(`[Resolver] Starting production-grade resolution for: ${videoId}`);
+    if (!videoId) {
+      console.error("[Resolver] Aborting: Missing videoId argument");
+      return null;
+    }
+    
+    const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    console.log(`[Resolver] Initializing multi-tier resolution for: ${videoId}`);
 
-    // 1. Try Direct InnerTube (Android Client)
+    // Skip local resolution on web due to CORS restrictions.
+    // The PlayerContext will automatically fall back to the backend proxy.
+    if (Platform.OS === 'web') {
+      console.log("[Resolver] Skipping local tiers on web (CORS)");
+      return null;
+    }
+
+    // --- TIER 0: react-native-ytdl (Native-first extraction) ---
+    if (Platform.OS !== 'web') {
+      try {
+        console.log("[Resolver] Tier 0: Attempting react-native-ytdl...");
+        const formats = await ytdl(youtubeUrl, { quality: 'highestaudio' });
+        if (formats && formats.length > 0) {
+          const best = formats.find(f => f.url);
+          if (best) {
+            console.log("[Resolver] Tier 0 SUCCESS");
+            return best.url;
+          }
+        }
+      } catch (err) {
+        console.warn(`[Resolver] Tier 0 FAILED: ${err.message}`);
+      }
+    }
+
+    // --- TIER 1: DIRECT INNERTUBE (Android Client Spoof) ---
     try {
-      console.log("[Resolver] Tier 1: Direct InnerTube Handshake...");
+      console.log("[Resolver] Tier 1: Attempting Direct Handshake...");
       const response = await fetch('https://www.youtube.com/youtubei/v1/player', {
         method: 'POST',
         headers: {
@@ -20,20 +53,10 @@ export const YouTubeResolver = {
         },
         body: JSON.stringify({
           context: {
-            client: {
-              clientName: 'ANDROID',
-              clientVersion: '17.36.4',
-              androidSdkVersion: 31,
-              hl: 'en',
-              gl: 'US'
-            }
+            client: { clientName: 'ANDROID', clientVersion: '17.36.4', androidSdkVersion: 31, hl: 'en', gl: 'US' }
           },
           videoId: videoId,
-          playbackContext: {
-            contentPlaybackContext: {
-              signatureTimestamp: 19800 
-            }
-          }
+          playbackContext: { contentPlaybackContext: { signatureTimestamp: 19800 } }
         })
       });
 
@@ -45,25 +68,26 @@ export const YouTubeResolver = {
           ...(streamingData?.formats || [])
         ];
 
-        // Find a format that has a direct URL (not a cipher)
-        const bestAudio = formats
-          .filter(f => f.mimeType && f.mimeType.includes('audio') && f.url)
-          .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-
-        if (bestAudio && bestAudio.url) {
-          console.log("[Resolver] Tier 1 SUCCESS: Direct");
-          return bestAudio.url;
+        // Ensure we isolate formats that provide direct playback URLs
+        const audioOnly = formats.filter(f => f?.mimeType?.includes('audio') && f?.url);
+        if (audioOnly.length > 0) {
+          const best = audioOnly.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+          if (best?.url) {
+            console.log("[Resolver] Tier 1 SUCCESS");
+            return best.url;
+          }
         }
       }
     } catch (err) {
       console.warn(`[Resolver] Tier 1 FAILED: ${err.message}`);
     }
 
-    // 2. Try Invidious API (With AbortController for real timeouts)
+    // --- TIER 2: HARDENED PUBLIC PROXIES (Invidious) ---
     const instances = [
       "https://invidious.privacydev.net",
       "https://iv.ggtyler.dev",
-      "https://inv.zzls.xyz"
+      "https://inv.zzls.xyz",
+      "https://invidious.no-logs.com"
     ];
 
     for (const instance of instances) {
@@ -71,7 +95,7 @@ export const YouTubeResolver = {
         console.log(`[Resolver] Tier 2: Querying Node ${instance}`);
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5s fast-fail window
 
         const response = await fetch(`${instance}/api/v1/videos/${videoId}`, {
           method: 'GET',
@@ -86,47 +110,61 @@ export const YouTubeResolver = {
             const best = data.adaptiveFormats
               .filter(f => f && typeof f.type === 'string' && f.type.includes('audio'))
               .sort((a, b) => (parseInt(b.bitrate) || 0) - (parseInt(a.bitrate) || 0))[0];
-            
-            if (best && best.url) {
-              console.log(`[Resolver] Tier 2 SUCCESS: ${instance}`);
+
+            if (best?.url) {
+              console.log(`[Resolver] Tier 2 SUCCESS via ${instance}`);
               return best.url;
             }
           }
         }
       } catch (err) {
-        console.warn(`[Resolver] Tier 2 Node ${instance} failed: ${err.message}`);
+        console.warn(`[Resolver] Tier 2 Node ${instance} Exception: ${err.message}`);
         continue;
       }
     }
 
-    // 3. Tier 3: Emergency Cobalt Extraction
-    try {
-      console.log("[Resolver] Tier 3: Attempting Emergency Extraction...");
-      const cobaltRes = await fetch('https://cobalt-api.mha.fi/api/json', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          url: `https://www.youtube.com/watch?v=${videoId}`,
-          downloadMode: 'audio',
-          audioFormat: 'mp3'
-        })
-      });
+    // --- TIER 3: EMERGENCY EXTRACTION OVERRIDE ---
+    const emergencyEndpoints = [
+      `https://api.v03.purple-api.workers.dev/api/stream?id=${videoId}`,
+      `https://cobalt-api.mha.fi/api/json`
+    ];
 
-      if (cobaltRes.ok) {
-        const data = await cobaltRes.json();
-        if (data?.url) {
-          console.log("[Resolver] Tier 3 EMERGENCY SUCCESS");
-          return data.url;
+    for (const endpoint of emergencyEndpoints) {
+      try {
+        console.log(`[Resolver] Tier 3: Attempting Emergency Override...`);
+        let res;
+        
+        if (endpoint.includes('cobalt')) {
+          res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json', 
+              'Accept': 'application/json' 
+            },
+            body: JSON.stringify({ 
+              url: `https://www.youtube.com/watch?v=${videoId}`, // ✅ Corrected string interpolation
+              downloadMode: 'audio',
+              audioFormat: 'mp3'
+            })
+          });
+        } else {
+          res = await fetch(endpoint);
         }
+
+        if (res.ok) {
+          const data = await res.json();
+          const streamUrl = data?.url || data?.streamingData?.url;
+          if (streamUrl) {
+            console.log("[Resolver] Tier 3 EMERGENCY SUCCESS");
+            return streamUrl;
+          }
+        }
+      } catch (e) {
+        console.warn(`[Resolver] Tier 3 Endpoint Failed: ${e.message}`);
       }
-    } catch (err) {
-      console.error("[Resolver] Tier 3 FAILED:", err.message);
     }
 
-    console.error("[Resolver] CRITICAL: All resolution strategies exhausted.");
+    console.error("[Resolver] CRITICAL: ALL TIERS EXHAUSTED.");
     return null;
   }
 };

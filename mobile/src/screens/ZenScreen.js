@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, TextInput, ActivityIndicator, Vibration } from 'react-native';
 import { usePlayer } from '../context/PlayerContext';
 import { THEME } from '../styles/theme';
-import { Moon, Sun, Coffee, Brain, Users, XCircle, ChevronRight, Zap } from 'lucide-react-native';
+import { Moon, Sun, Coffee, Brain, Users, XCircle, ChevronRight, Zap, Copy, Plus } from 'lucide-react-native';
 import { Accelerometer } from 'expo-sensors';
+import * as Clipboard from 'expo-clipboard';
 
 const ZenScreen = () => {
   const { moodSeeds, playTrack, currentTrack, isPlaying, roomId, joinRoom, leaveRoom } = usePlayer();
@@ -12,6 +13,7 @@ const ZenScreen = () => {
   const [mode, setMode] = useState('WORK'); // WORK or BREAK
   const [inputRoomId, setInputRoomId] = useState('');
   const [isShaking, setIsShaking] = useState(false);
+  const [copied, setCopied] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
@@ -42,9 +44,7 @@ const ZenScreen = () => {
 
     // Generate random room ID if not in one
     if (!roomId) {
-      const newId = Math.random().toString(36).substring(7).toUpperCase();
-      console.log("[Zen] Shake detected! Creating room:", newId);
-      joinRoom(newId);
+      handleGenerateRoom();
     }
 
     setTimeout(() => setIsShaking(false), 1000);
@@ -93,7 +93,22 @@ const ZenScreen = () => {
 
   const handleJoin = () => {
     if (inputRoomId.trim()) {
-      joinRoom(inputRoomId.trim());
+      joinRoom(inputRoomId.trim().toUpperCase());
+    }
+  };
+
+  const handleGenerateRoom = () => {
+    const newId = Math.random().toString(36).substring(7).toUpperCase();
+    console.log("[Zen] Generating new session:", newId);
+    joinRoom(newId);
+  };
+
+  const copyToClipboard = async () => {
+    if (roomId) {
+      await Clipboard.setStringAsync(roomId);
+      setCopied(true);
+      Vibration.vibrate(50);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -134,31 +149,43 @@ const ZenScreen = () => {
         <View style={styles.roomHeader}>
           <Users size={16} color={roomId ? THEME.colors.text.accent : THEME.colors.text.dim} />
           <Text style={[styles.roomTitle, roomId && {color: THEME.colors.text.accent}]}> 
-            {roomId ? `CONNECTED_TO: ${roomId}` : 'JOIN_COLLAB_ROOM'}
+            {roomId ? `CONNECTED_TO: ${roomId}` : 'COLLABORATIVE_SESSION'}
           </Text>
         </View>
         
         {roomId ? (
           <View style={styles.activeRoom}>
-            <Text style={styles.roomDesc}>Real-time synchronization enabled. Shake device to invite nearby nodes.</Text>
+            <View style={styles.roomInfoRow}>
+              <Text style={styles.roomDesc}>Sharing enabled. Your playback is now synced across all nodes.</Text>
+              <TouchableOpacity onPress={copyToClipboard} style={styles.copyBtn}>
+                <Copy size={16} color={copied ? THEME.colors.text.accent : THEME.colors.text.dim} />
+                {copied && <Text style={styles.copiedText}> COPIED!</Text>}
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity onPress={leaveRoom} style={styles.leaveButton}>
               <XCircle size={14} color="#f44" />
               <Text style={styles.leaveButtonText}> TERMINATE_SESSION</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.joinForm}>
-            <TextInput
-              style={styles.roomInput}
-              placeholder="ENTER_ROOM_ID..."
-              placeholderTextColor={THEME.colors.text.dim}
-              value={inputRoomId}
-              onChangeText={setInputRoomId}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <TouchableOpacity onPress={handleJoin} style={styles.joinButton}>
-              <ChevronRight size={20} color={THEME.colors.text.accent} />
+          <View style={styles.roomActions}>
+            <View style={styles.joinForm}>
+              <TextInput
+                style={styles.roomInput}
+                placeholder="ENTER_ROOM_ID..."
+                placeholderTextColor={THEME.colors.text.dim}
+                value={inputRoomId}
+                onChangeText={setInputRoomId}
+                autoCapitalize="characters"
+                autoCorrect={false}
+              />
+              <TouchableOpacity onPress={handleJoin} style={styles.joinButton}>
+                <ChevronRight size={20} color={THEME.colors.text.accent} />
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity onPress={handleGenerateRoom} style={styles.generateBtn}>
+              <Plus size={14} color={THEME.colors.text.primary} />
+              <Text style={styles.generateBtnText}> GENERATE_NEW_CODE</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -270,6 +297,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
+  roomActions: {
+    gap: 12,
+  },
+  roomInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  copyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 4,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  copiedText: {
+    color: THEME.colors.text.accent,
+    fontFamily: THEME.typography.mono,
+    fontSize: 8,
+    marginLeft: 4,
+  },
   joinForm: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -290,14 +339,31 @@ const styles = StyleSheet.create({
     borderLeftWidth: 1,
     borderLeftColor: THEME.colors.border,
   },
+  generateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    borderStyle: 'dashed',
+  },
+  generateBtnText: {
+    color: THEME.colors.text.primary,
+    fontFamily: THEME.typography.mono,
+    fontSize: 10,
+    marginLeft: 8,
+  },
   activeRoom: {
     gap: 12,
   },
   roomDesc: {
+    flex: 1,
     color: THEME.colors.text.secondary,
     fontFamily: THEME.typography.mono,
     fontSize: 10,
     lineHeight: 14,
+    marginRight: 10,
   },
   leaveButton: {
     flexDirection: 'row',

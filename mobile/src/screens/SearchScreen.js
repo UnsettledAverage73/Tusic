@@ -22,8 +22,12 @@ const SearchScreen = () => {
       } else {
         data = await TusicAPI.searchPodcasts(query);
       }
+      
+      // Safety check: ensure data is an array
+      const resultsArray = Array.isArray(data) ? data : [];
+      
       // Deduplicate results by id to prevent "duplicate key" error
-      const uniqueResults = Array.from(new Map(data.map(item => [item.id, item])).values());
+      const uniqueResults = Array.from(new Map(resultsArray.map(item => [item.id, item])).values());
       setResults(uniqueResults);
     } catch (e) {
       console.error(e);
